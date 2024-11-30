@@ -1,235 +1,262 @@
-import React, { useState, useEffect, useRef } from "react";
-import { readDir, BaseDirectory, readBinaryFile } from "@tauri-apps/api/fs";
-import { homeDir } from "@tauri-apps/api/path";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState, useEffect, useRef } from "react";
+import { invoke, convertFileSrc } from "@tauri-apps/api/tauri";
+import { parseBlob } from "music-metadata";
 import {
-  faPlay,
-  faPause,
-  faVolumeUp,
-  faVolumeOff,
   faForward,
   faBackward,
+  faPlay,
+  faPause,
+  faRepeat,
+  faShuffle,
+  faVolumeOff,
+  faVolumeUp,
 } from "@fortawesome/free-solid-svg-icons";
-import jsmediatags from "jsmediatags/dist/jsmediatags.min.js";
+import { Howl } from "howler";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import artDefault from "../assets/art-default.jpg";
-
+import ProgressBar from "./ProgressBar";
 import VolumeSlider from "./VolumeSlider";
-import ProgressBar from "./Progressbar";
-
-function formatTime(time) {
-  return [Math.floor(time / 60), Math.floor(time % 60)]
-    .map((num) => String(num).padStart(2, "0"))
-    .join(":");
-}
 
 const MusicPlayer = () => {
-  const audioRef = useRef(null);
+  const [musicFiles, setMusicFiles] = useState([]);
+  const [currentSound, setCurrentSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState(null);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isLoopingSingle, setIsLoopingSingle] = useState(false);
+  const [volume, setVolume] = useState(0.2);
+  const [albumArt, setAlbumArt] = useState(artDefault);
+  const [tags, setTags] = useState(null);
+  const [trackTitle, setTrackTitle] = useState(null);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [shuffledIndices, setShuffledIndices] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(0.5);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [coverArt, setCoverArt] = useState(artDefault);
-  const [tracks, setTracks] = useState([]);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-  const [currentTrackTitle, setCurrentTrackTitle] =
-    useState("No track selected");
-  const [currentTrackArtist, setCurrentTrackArtist] =
-    useState("Unknown artist");
+  const [autoPlay, setAutoPlay] = useState(false);
   const [shouldScroll, setShouldScroll] = useState(false);
   const titleRef = useRef(null);
+
+  useEffect(() => {
+    loadMusicFiles();
+  }, []);
 
   useEffect(() => {
     const titleElement = titleRef.current;
     if (titleElement) {
       setShouldScroll(titleElement.scrollWidth > titleElement.clientWidth);
     }
-  }, [currentTrackTitle]);
+  }, [trackTitle]);
 
   useEffect(() => {
-    loadMusicFiles();
-
-    const audio = audioRef.current;
-    if (audio) {
-      audio.addEventListener("loadedmetadata", handleLoadMetadata);
-      audio.addEventListener("timeupdate", handleTimeUpdate);
-      audio.addEventListener("ended", handleTrackEnd);
+    if (currentSound) {
+      currentSound.volume(volume);
     }
-
-    return () => {
-      if (audio) {
-        audio.removeEventListener("loadedmetadata", handleLoadMetadata);
-        audio.removeEventListener("timeupdate", handleTimeUpdate);
-        audio.removeEventListener("ended", handleTrackEnd);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (tracks.length > 0 && currentTrackIndex < tracks.length) {
-      loadTrackMetadata();
-    }
-  }, [currentTrackIndex, tracks]);
+  }, [volume, currentSound]);
 
   const loadMusicFiles = async () => {
     try {
-      const userHome = await homeDir();
-      const musicPath = `${userHome}Music`;
-
-      const entries = await readDir(musicPath, { recursive: true });
-      const musicFiles = entries.filter((entry) => {
-        const ext = entry.path.toLowerCase();
-        return (
-          ext.endsWith(".mp3") || ext.endsWith(".wav") || ext.endsWith(".m4a")
-        );
-      });
-
-      const formattedTracks = musicFiles.map((file) => ({
-        path: file.path,
-        name: file.name || file.path.split("\\").pop().split("/").pop(),
-      }));
-
-      setTracks(formattedTracks);
-
-      if (formattedTracks.length > 0) {
-        setCurrentTrackTitle(formattedTracks[0].name);
-      }
+      const files = await invoke("get_music_files");
+      setMusicFiles(files);
+      setShuffledIndices(Array.from({ length: files.length }, (_, i) => i));
     } catch (error) {
       console.error("Error loading music files:", error);
     }
   };
 
-  const loadTrackMetadata = async () => {
-    const currentTrack = tracks[currentTrackIndex];
-    if (!currentTrack) return;
-
-    // Remove .mp3 extension from the track title
-    const trackTitle = currentTrack.name.replace(/\.mp3$/i, "");
-    setCurrentTrackTitle(trackTitle);
-
-    try {
-      const fileData = await readBinaryFile(currentTrack.path);
-      const blob = new Blob([new Uint8Array(fileData)], { type: "audio/mpeg" });
-      const objectUrl = URL.createObjectURL(blob);
-
-      if (audioRef.current) {
-        audioRef.current.src = objectUrl;
-        audioRef.current.load();
-
-        if (isPlaying) {
-          audioRef.current.play();
-        }
-
-        // Try to read metadata if it's an MP3 file
-        if (currentTrack.path.toLowerCase().endsWith(".mp3")) {
-          jsmediatags.read(blob, {
-            onSuccess: function (tag) {
-              if (tag.tags.picture) {
-                const { data, format } = tag.tags.picture;
-                const base64String = data
-                  .map((byte) => String.fromCharCode(byte))
-                  .join("");
-                const imageUrl = `data:${format};base64,${btoa(base64String)}`;
-                setCoverArt(imageUrl);
-                setCurrentTrackTitle(tag.tags.title || trackTitle);
-                setCurrentTrackArtist(tag.tags.artist || "Unknown artist");
-                console.log(tag);
-              }
-            },
-            onError: function (error) {
-              console.log("Error reading tags:", error);
-              setCoverArt(artDefault);
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error loading track metadata:", error);
-      setCoverArt(artDefault);
-    }
-  };
-
-  // Remove .mp3 extension from the track title
   useEffect(() => {
-    if (currentTrackTitle) {
-      const trackTitle = currentTrackTitle.replace(/\.mp3$/i, "");
-      setCurrentTrackTitle(trackTitle);
+    if (tags === null && musicFiles.length > 0) {
+      playMusic(Math.floor(Math.random() * musicFiles.length));
     }
-  }, [currentTrackTitle]);
+  }, [musicFiles, tags]);
 
-  const handleLoadMetadata = () => {
-    setDuration(audioRef.current.duration);
+  const shuffleArray = (array) => {
+    let shuffledArray = array.slice();
+    for (let i = shuffledArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledArray[i], shuffledArray[j]] = [
+        shuffledArray[j],
+        shuffledArray[i],
+      ];
+    }
+    return shuffledArray;
+  };
+  const getPlayIndex = (requestedIndex) => {
+    if (!isShuffle) return requestedIndex;
+    return shuffledIndices.findIndex((idx) => idx === requestedIndex);
   };
 
-  const handleTimeUpdate = () => {
-    setCurrentTime(audioRef.current.currentTime);
+  const getNextTrackIndex = (currentIndex) => {
+    if (!isShuffle) {
+      return (currentIndex + 1) % musicFiles.length;
+    }
+    return (currentIndex + 1) % shuffledIndices.length;
   };
 
-  const handleTrackEnd = () => {
-    playNextTrack();
+  const getPrevTrackIndex = (currentIndex) => {
+    if (!isShuffle) {
+      return currentIndex === 0 ? musicFiles.length - 1 : currentIndex - 1;
+    }
+    return currentIndex === 0 ? shuffledIndices.length - 1 : currentIndex - 1;
   };
 
-  const handlePlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
+  const playMusic = (index) => {
+    const actualIndex = isShuffle ? shuffledIndices[index] : index;
+    const fileToPlay = musicFiles[actualIndex];
+    const url = convertFileSrc(fileToPlay.path);
+
+    if (currentSound) {
+      currentSound.stop();
+    }
+
+    const currentTrackTitle = fileToPlay.name.replace(/\.mp3$/i, "");
+    setTrackTitle(currentTrackTitle);
+    setCurrentTrackIndex(index);
+
+    async function fetchAndReadTags(url) {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const metadata = await parseBlob(blob);
+        setTags(metadata.common);
+
+        if (metadata.common.picture) {
+          const content = new Uint8Array(metadata.common.picture[0].data);
+          const blob = new Blob([content], { type: "image/jpeg" });
+          const url = URL.createObjectURL(blob);
+          setAlbumArt(url);
+        } else {
+          setAlbumArt(artDefault);
+        }
+      } catch (error) {
+        console.error("Error fetching the file:", error);
       }
-      setIsPlaying(!isPlaying);
+    }
+
+    fetchAndReadTags(url);
+
+    const sound = new Howl({
+      src: [url],
+      format: ["mp3", "wav"],
+      autoplay: autoPlay,
+      loop: isLoopingSingle,
+      html5: true,
+      volume: volume,
+      onplay: () => {
+        setIsPlaying(true);
+        setCurrentTrack(url);
+        setCurrentTrackIndex(index);
+        setDuration(sound.duration());
+      },
+      onend: () => {
+        if (!isLoopingSingle) {
+          playMusic(getNextTrackIndex(index));
+        }
+      },
+      onpause: () => {
+        setIsPlaying(false);
+      },
+      onloaderror: () => {
+        console.error("Error loading the file");
+        playMusic(getNextTrackIndex(index));
+      },
+      onupdate: () => {
+        if (currentSound) {
+          setCurrentTime(currentSound.seek());
+        }
+      },
+    });
+
+    setCurrentSound(sound);
+    sound.play();
+  };
+
+  function handleProgressChange(event) {
+    if (currentSound && duration > 0) {
+      const newTime = (event.target.value / 100) * duration;
+      currentSound.seek(newTime);
+      setCurrentTime(newTime);
+    }
+  }
+
+  const togglePlay = (index) => {
+    const playIndex = isShuffle ? getPlayIndex(index) : index;
+    playMusic(playIndex);
+  };
+
+  const toggleRepeatSingle = () => {
+    setIsLoopingSingle(!isLoopingSingle);
+  };
+
+  const toggleShuffle = () => {
+    if (!isShuffle) {
+      const newShuffledIndices = shuffleArray(
+        Array.from({ length: musicFiles.length }, (_, i) => i)
+      );
+      setShuffledIndices(newShuffledIndices);
+      if (currentTrack) {
+        const currentOriginalIndex = musicFiles.findIndex(
+          (file) => convertFileSrc(file.path) === currentTrack
+        );
+        const newPosition = newShuffledIndices.findIndex(
+          (index) => index === currentOriginalIndex
+        );
+        setCurrentTrackIndex(newPosition);
+      }
+    } else {
+      if (currentTrack) {
+        const originalIndex = shuffledIndices[currentTrackIndex];
+        setCurrentTrackIndex(originalIndex);
+      }
+    }
+    setIsShuffle(!isShuffle);
+  };
+
+  const togglePlayPause = () => {
+    if (currentSound) {
+      if (isPlaying) {
+        currentSound.pause();
+        setAutoPlay(true);
+      } else {
+        currentSound.play();
+      }
     }
   };
 
-  const handleMute = () => {
-    if (audioRef.current) {
-      setIsMuted(!isMuted);
-      audioRef.current.volume = isMuted ? volume : 0;
+  const stopMusic = () => {
+    if (currentSound) {
+      currentSound.stop();
+      setCurrentTrack(null);
+      setIsPlaying(false);
     }
   };
 
-  const handleVolumeChange = (value) => {
-    setVolume(value);
-    if (audioRef.current) {
-      audioRef.current.volume = value;
-      setIsMuted(value === 0);
-    }
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    setVolume(isMuted ? previousVolume : 0);
   };
 
-  const handleProgressChange = (e) => {
-    const newTime = (e.target.value / 100) * duration;
-    setCurrentTime(newTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
   };
 
-  const playTrack = async (index) => {
-    if (index >= 0 && index < tracks.length) {
-      setCurrentTrackIndex(index);
-      audioRef.current.src = tracks[index].path;
-      await audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
+  useEffect(() => {
+    console.log(tags);
+  }, [tags]);
 
-  const playNextTrack = () => {
-    const nextIndex = (currentTrackIndex + 1) % tracks.length;
-    playTrack(nextIndex);
-  };
-
-  const playPreviousTrack = () => {
-    const prevIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
-    playTrack(prevIndex);
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
     <div className="flex w-full text-white rounded-3xl justify-between overflow-hidden">
-      <audio ref={audioRef} />
-
       {/* Volume */}
       <div className="flex flex-col items-center px-3 pl-4 justify-center gap-2">
         <button
-          onClick={handleMute}
+          onClick={toggleMute}
           className="w-14 h-14 flex items-center justify-center shadow-xl bg-white/10 rounded-full text-white hover:opacity-80"
           style={{ filter: "drop-shadow(2px 2px 20px #000000)" }}
         >
@@ -241,7 +268,7 @@ const MusicPlayer = () => {
         <div className="bg-white/10 shadow-2xl p-2 rounded-3xl">
           <VolumeSlider
             value={volume}
-            onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+            onChange={handleVolumeChange}
             isMuted={isMuted}
           />
         </div>
@@ -250,60 +277,72 @@ const MusicPlayer = () => {
       {/* Music Player */}
       <div className="flex flex-col w-full bg-gray-950/10 rounded-3xl mx-2">
         {/* Track Information */}
-        <div className="p-4">
+        <div className="p-4 h-[101px]">
           <div className="relative w-[315px] overflow-hidden">
             <div
               ref={titleRef}
-              className={`text-lg font-semibold text-white whitespace-nowrap ${
-                shouldScroll ? "animate-scroll" : "truncate"
-              }`}
-              style={{
-                transform: "translateX(0)",
-                animation: shouldScroll ? "scroll 15s linear infinite" : "none",
-              }}
+              className="text-lg font-semibold text-white whitespace-nowrap truncate"
             >
-              {currentTrackTitle}
+              {tags?.title || trackTitle || "-"}
             </div>
           </div>
-          <h3 className="text-sm text-gray-400">{currentTrackArtist}</h3>
+          <h3 className="text-sm text-gray-400">{tags?.artist || "-"}</h3>
         </div>
 
         {/* Music Player Controls */}
-        <div className="flex flex-col items-center gap-2 p-3 rounded-3xl bg-gray-950/30 mx-3">
+        <div className="flex flex-col items-center gap-2 p-3 rounded-3xl bg-gray-950/30 mx-2">
           <div className="flex gap-2">
             <button
-              onClick={playPreviousTrack}
+              onClick={toggleShuffle}
+              className={`w-10 h-10 flex items-center justify-center rounded-full text-white hover:bg-gray-950/30 duration-200 ${
+                isShuffle && "bg-gray-950/30"
+              }`}
+            >
+              <FontAwesomeIcon icon={faShuffle} />
+            </button>
+            <button
+              onClick={() => playMusic(getPrevTrackIndex(currentTrackIndex))}
               className="w-10 h-10 flex items-center justify-center rounded-full text-white hover:bg-gray-950/30 duration-200"
             >
               <FontAwesomeIcon icon={faBackward} />
             </button>
             <button
-              onClick={handlePlayPause}
+              onClick={togglePlayPause}
               className="w-10 h-10 rounded-full text-white hover:bg-gray-950/30 duration-200"
             >
               <FontAwesomeIcon icon={isPlaying ? faPause : faPlay} />
             </button>
             <button
-              onClick={playNextTrack}
+              onClick={() => playMusic(getNextTrackIndex(currentTrackIndex))}
               className="w-10 h-10 flex items-center justify-center rounded-full text-white hover:bg-gray-950/30 duration-200"
             >
               <FontAwesomeIcon icon={faForward} />
             </button>
+            <button
+              onClick={toggleRepeatSingle}
+              className={`w-10 h-10 flex items-center justify-center rounded-full text-white hover:bg-gray-950/30 duration-200 ${
+                isLoopingSingle && "bg-gray-950/30"
+              }`}
+            >
+              <FontAwesomeIcon icon={faRepeat} />
+            </button>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
             <ProgressBar
               value={(currentTime / duration) * 100 || 0}
               onChange={handleProgressChange}
             />
-            <div className="flex text-xs text-white justify-between">
+
+            <div className="flex text-[10px] text-white/40 justify-between">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
           </div>
         </div>
       </div>
-      <img src={coverArt} className="h-56 rounded-3xl w-56" />
+
+      <img src={albumArt} className="h-56 rounded-3xl w-56" />
       {/* <div className="flex-grow overflow-y-auto">
         <div className="text-sm font-medium mb-2">Library</div>
         <div className="flex flex-col gap-1">

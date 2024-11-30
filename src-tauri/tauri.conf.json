@@ -16,7 +16,17 @@
       "all": true,
       "fs": {
         "all": true,
-        "scope": ["**"]
+        "scope": ["$AUDIO/*"],
+        "readFile": true,
+        "readDir": true
+      },
+      "protocol": {
+        "all": true,
+        "asset": true,
+        "assetScope": ["$AUDIO/*", "$AUDIO/**/*"]
+      },
+      "path": {
+        "all": true
       }
     },
     "bundle": {
@@ -53,7 +63,8 @@
       }
     },
     "security": {
-      "csp": null
+      "csp": null,
+      "dangerousDisableAssetCspModification": false
     },
     "updater": {
       "active": false

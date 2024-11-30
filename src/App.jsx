@@ -18,7 +18,7 @@ const App = () => {
     <Router>
       <div
         data-tauri-drag-region
-        className="relative bg-gray-950/40 font-roboto h-screen flex rounded-3xl backdrop-blur-xl overflow-hidden"
+        className="relative bg-gray-950/40 font-roboto h-screen flex rounded-3xl overflow-hidden"
       >
         <div
           data-tauri-drag-region
@@ -30,6 +30,7 @@ const App = () => {
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
             filter: "blur(15px)",
+            opacity: "0.6",
           }}
         />
         <Sidebar />
