@@ -42,6 +42,24 @@ const MusicPlayer = () => {
   }, []);
 
   useEffect(() => {
+    let intervalId;
+    if (currentSound && isPlaying) {
+      intervalId = setInterval(() => {
+        if (currentSound) {
+          const currentPosition = currentSound.seek();
+          setCurrentTime(currentPosition);
+        }
+      }, 1000); // Update every second
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [currentSound, isPlaying]);
+
+  useEffect(() => {
     const titleElement = titleRef.current;
     if (titleElement) {
       setShouldScroll(titleElement.scrollWidth > titleElement.clientWidth);
