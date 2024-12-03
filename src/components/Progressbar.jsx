@@ -36,6 +36,9 @@ const ProgressBar = ({ value, onChange }) => {
           [&::-moz-range-track]:bg-gradient-to-r
           [&::-moz-range-track]:from-white/50
           [&::-moz-range-track]:to-white/20"
+        style={{
+          background: `linear-gradient(to right, white ${value}%, gray 0)`,
+        }}
       />
     </div>
   );

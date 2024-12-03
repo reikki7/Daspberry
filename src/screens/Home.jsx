@@ -83,7 +83,7 @@ const Home = () => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="flex flex-col gap-1 h-full">
+    <div className="flex flex-col gap-1 h-[867px]">
       <div className="flex gap-0.5 relative flex-row h-3/4 flex-grow ">
         <div className="flex w-[250px] flex-col gap-1 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20">
           <img

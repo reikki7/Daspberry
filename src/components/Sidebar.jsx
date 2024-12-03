@@ -25,7 +25,7 @@ const Sidebar = () => {
   return (
     <div
       data-tauri-drag-region
-      className="h-full text-white flex flex-col select-none "
+      className="h-full text-white flex flex-col select-none"
     >
       <WindowControls />
       <div className="flex flex-col items-center mt-5">

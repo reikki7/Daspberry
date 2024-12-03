@@ -19,9 +19,9 @@ const Navbar = () => {
       </div>
       <ul className="flex gap-6">
         <li>
-          <Link to="/calendar">
+          <Link to="/events">
             <div className="bg-gray-950/40 px-6 py-2 rounded-full hover:opacity-70 duration-200">
-              Calendar
+              Events
             </div>
           </Link>
         </li>

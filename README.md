@@ -61,7 +61,7 @@ This will create a production build of the application.
 ## Features
 
 - **Music Player**: Play music from your local files.
-- **Calendar**: View and manage your events.
+- **Events**: View and manage your events.
 - **Weather**: Check the weather in your area.
 - **Tasks**: Keep track of your tasks and deadlines.
 - **Game Progress Tracker**: Track your progress in your games.
