@@ -78,3 +78,18 @@
 .animate-spin {
   animation: spin 2.5s linear infinite;
 }
+
+.disappear {
+  animation: disappear 1s forwards;
+}
+
+@keyframes disappear {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+}

@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 const MiniCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Get calendar data
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -12,11 +11,9 @@ const MiniCalendar = () => {
     const firstDayOfMonth = new Date(year, month, 1).getDay();
 
     const days = [];
-    // Add empty slots for days before the first of the month
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(null);
     }
-    // Add all days of the month
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(i);
     }
@@ -54,6 +51,7 @@ const MiniCalendar = () => {
 
   const days = getDaysInMonth(currentDate);
   const today = new Date();
+
   const isToday = (day) => {
     return (
       day === today.getDate() &&
@@ -65,39 +63,40 @@ const MiniCalendar = () => {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col border-b border-white/10">
-        <h2
-          className="text-xl font-medium text-white"
-          style={{ width: "80px" }}
-        >
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </h2>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-200 to-white bg-clip-text text-transparent">
+            {monthNames[currentDate.getMonth()]}
+          </h2>
+          <span className="text-white/60 text-sm">
+            {currentDate.getFullYear()}
+          </span>
+        </div>
 
-        {/* Switch months */}
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-1">
           <button
             onClick={prevMonth}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/5 rounded-lg transition-all duration-300"
           >
-            <ChevronLeft className="w-3 h-3 text-white/70" />
+            <ChevronLeft className="w-4 h-4 text-cyan-400" />
           </button>
           <button
             onClick={nextMonth}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/5 rounded-lg transition-all duration-300"
           >
-            <ChevronRight className="w-3 h-3 text-white/70" />
+            <ChevronRight className="w-4 h-4 text-cyan-400" />
           </button>
         </div>
       </div>
 
       {/* Calendar Grid */}
-      <div className="flex-1">
+      <div>
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 mb-4">
+        <div className="grid grid-cols-7 mb-2">
           {weekDays.map((day, index) => (
             <div
               key={`${day}-${index}`}
-              className="text-white/40 text-xs font-medium text-center"
+              className="text-white/40 text-xs font-medium text-center p-2"
             >
               {day}
             </div>
@@ -110,27 +109,29 @@ const MiniCalendar = () => {
             <div
               key={index}
               className={`
-          aspect-square flex items-center p-2 justify-center rounded-md text-xs
-          ${
-            day === null
-              ? ""
-              : "hover:bg-white/10 cursor-pointer transition-colors"
-          }
-          ${isToday(day) ? "bg-white/20 text-white" : "text-white/70"}
-        `}
-            >
-              {day}
-            </div>
+                aspect-square flex items-center justify-center rounded-lg text-sm
+                transition-all duration-300 relative
+                ${
+                  day === null
+                    ? ""
+                    : isToday(day)
+                    ? "bg-[#05f7ff] text-cyan-400 font-bold"
+                    : "bg-white/5 text-white/80 hover:bg-white/10 hover:text-cyan-400"
+                }
+                ${day === null ? "" : "cursor-pointer"}
+              `}
+            ></div>
           ))}
         </div>
       </div>
 
       {/* Separator */}
-      <div className="border-t border-white/20 my-4"></div>
+      <div className="border-t border-white/10 my-6"></div>
 
       {/* No upcoming event message */}
-      <div className=" text-white/70 text-sm">
-        <li>No upcoming event</li>
+      <div className="text-white/60 text-sm flex items-center">
+        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-2"></span>
+        No upcoming event
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 const WindowControls = () => {
   return (
-    <div data-tauri-drag-region className="flex gap-2 p-4">
+    <div className="flex gap-2 p-4">
       <button
         className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
         onClick={() => window.__TAURI__.window.getCurrent().close()}

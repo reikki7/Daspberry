@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 import artDefault from "../assets/art-default.jpg";
 import {
@@ -36,6 +36,19 @@ const MusicMenuModal = ({
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      setMusicMenu(false);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredMusic = musicFiles.filter((file, index) => {
@@ -64,7 +77,7 @@ const MusicMenuModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 rounded-3xl backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 rounded-3xl backdrop-blur-sm flex items-center justify-center z-[200]"
       onClick={handleOverlayClick}
     >
       <div className="relative w-[800px] h-[800px] bg-black/70 rounded-3xl border border-white/10 shadow-2xl overflow-hidden">

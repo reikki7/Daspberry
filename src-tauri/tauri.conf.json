@@ -16,9 +16,10 @@
       "all": true,
       "fs": {
         "all": true,
-        "scope": ["$AUDIO/*"],
+        "scope": ["$AUDIO/*", "**"],
         "readFile": true,
-        "readDir": true
+        "readDir": true,
+        "exists": true
       },
       "protocol": {
         "all": true,

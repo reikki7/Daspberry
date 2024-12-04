@@ -60,7 +60,8 @@ This will create a production build of the application.
 
 ## Features
 
-- **Music Player**: Play music from your local files.
+- **Music Player**: Play music from your local files with features like shuffle, repeat, and volume control. The player also displays album art and metadata for the current track.
+- **Local & Github Repo Viewer**: View and manage your local and GitHub repositories. The viewer fetches project folders from your local system and repositories from your GitHub account, displaying relevant information such as the framework used and the last modified date.
 - **Events**: View and manage your events.
 - **Weather**: Check the weather in your area.
 - **Tasks**: Keep track of your tasks and deadlines.

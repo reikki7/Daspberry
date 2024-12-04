@@ -88,6 +88,42 @@ const MusicPlayer = () => {
     console.log("Fetched song metadata:", songMetadata);
   }, [musicFiles, currentSound]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (!currentSound) return;
+
+      switch (event.code) {
+        case "Space": // Play/Pause
+          event.preventDefault();
+          if (isPlaying) {
+            currentSound.pause();
+          } else {
+            currentSound.play();
+          }
+          break;
+
+        case "ArrowRight": // Seek forward
+          currentSound.seek(
+            Math.min(currentSound.seek() + 2, currentSound.duration())
+          );
+          break;
+
+        case "ArrowLeft": // Seek backward
+          currentSound.seek(Math.max(currentSound.seek() - 2, 0));
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentSound, isPlaying]);
+
   // Load music files from the system
   const loadMusicFiles = async () => {
     try {
@@ -266,7 +302,6 @@ const MusicPlayer = () => {
           // Try to get metadata and album art from cache first
           const cachedData = await getMetadataFromCache(file.path, file.size);
           if (cachedData) {
-            console.log("Using cached metadata for:", file.path);
             return {
               metadata: cachedData.metadata,
               albumArtBlob: cachedData.albumArtBlob,
@@ -529,31 +564,64 @@ const MusicPlayer = () => {
     playMusic(getPrevTrackIndex(currentTrackIndex), isPlaying ? true : false);
   };
 
+  useEffect(() => {
+    console.log("Album Art", albumArt);
+  }, [albumArt, currentSound]);
+
+  const handleError = () => {
+    setAlbumArt(artDefault);
+  };
+
   return (
-    <div className="flex w-full text-white rounded-3xl justify-between overflow-hidden">
-      {/* Volume */}
-      <div className="flex flex-col items-center px-3 pl-4 justify-center gap-1.5">
-        <button
-          onClick={toggleMute}
-          className="w-14 h-14 flex items-center justify-center shadow-xl bg-white/10 rounded-full text-white hover:opacity-80"
-          style={{ filter: "drop-shadow(2px 2px 20px #000000)" }}
-        >
-          <div className="bg-gray-950/40 w-10 h-10 flex justify-center items-center rounded-full">
-            <FontAwesomeIcon icon={isMuted ? faVolumeMute : faVolumeUp} />
+    <div className="flex w-full text-white rounded-3xl justify-between overflow-hidden relative">
+      {/* Hidden Image for Error Handling */}
+      <img
+        src={albumArt}
+        alt="error handling image"
+        onError={handleError}
+        style={{ display: "none" }}
+      />
+
+      {/* Blurred Background */}
+      <div
+        className="absolute inset-0 z-0 rounded-3xl"
+        style={{
+          backgroundImage:
+            albumArt === "/src/assets/art-default.jpg"
+              ? null
+              : `url(${albumArt})`,
+          backgroundSize: "cover",
+          backgroundPosition: "40%",
+          backgroundRepeat: "no-repeat",
+          filter: "blur(15px)",
+          opacity: 0.1,
+        }}
+      ></div>
+
+      {/* Foreground Content */}
+      <div className="relative z-10 flex w-full justify-between items-center">
+        {/* Volume */}
+        <div className="flex flex-col items-center px-3 pl-4 justify-center gap-1.5">
+          <button
+            onClick={toggleMute}
+            className="w-14 h-14 flex items-center justify-center shadow-xl bg-white/10 rounded-full text-white hover:opacity-80"
+            style={{ filter: "drop-shadow(2px 2px 20px #000000)" }}
+          >
+            <div className="bg-gray-950/40 w-10 h-10 flex justify-center items-center rounded-full">
+              <FontAwesomeIcon icon={isMuted ? faVolumeMute : faVolumeUp} />
+            </div>
+          </button>
+
+          <div className="bg-white/10 shadow-2xl p-2 rounded-3xl">
+            <VolumeSlider
+              value={volume}
+              onChange={handleVolumeChange}
+              isMuted={isMuted}
+            />
           </div>
-        </button>
-
-        <div className="bg-white/10 shadow-2xl p-2 rounded-3xl">
-          <VolumeSlider
-            value={volume}
-            onChange={handleVolumeChange}
-            isMuted={isMuted}
-          />
         </div>
-      </div>
 
-      {/* Music Player */}
-      <div className="flex bg-gray-950/15 rounded-3xl">
+        {/* Music Player */}
         <div className="flex flex-col w-full mx-2">
           <div className="flex items-center justify-between">
             {/* Track Information */}
@@ -656,7 +724,11 @@ const MusicPlayer = () => {
         </div>
 
         {/* Album Art */}
-        <img src={albumArt} className="h-[227px] rounded-3xl w-[227px]" />
+        <img
+          src={albumArt}
+          className="relative z-10 h-[227px] rounded-3xl w-[227px]"
+          alt="Album Art"
+        />
       </div>
     </div>
   );

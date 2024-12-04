@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import MiniCalendar from "../components/MiniCalendar";
 import MusicPlayer from "../components/MusicPlayer";
+import ProjectWheel from "../components/ProjectWheel";
 
 const Clock = () => {
   const [time, setTime] = useState(new Date());
@@ -48,7 +49,7 @@ const Clock = () => {
     <div className="relative group select-none">
       <div className="absolute -inset-1 rounded-2xl opacity-0 duration-500" />
       <div
-        className="relative flex flex-col items-center h-36 bg-black/20 mt-1 rounded-2xl px-12 py-2 pb-9 shadow-2xl"
+        className="relative flex flex-col items-center h-36 bg-blue-950/30 mt-1 rounded-2xl px-12 py-2 pb-9 shadow-2xl"
         style={{
           clipPath:
             "path('M 0 0 L 348 0 L 348 9 C 348 41 343 52 330 61 L 243 114 C 226 126 215 129 206 129 L 175 129 L 144 129 C 135 129 123 126 105 113 L 17 61 C 5 52 0 41 0 7 Z')",
@@ -59,7 +60,6 @@ const Clock = () => {
           style={{
             width: "250px",
             textAlign: "center",
-            filter: "drop-shadow(2px 2px 20px #000000)",
           }}
         >
           {formatTime(time)}
@@ -83,7 +83,7 @@ const Home = () => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="flex flex-col gap-1 h-[867px]">
+    <div className="flex flex-col gap-1 h-[873px]">
       <div className="flex gap-0.5 relative flex-row h-3/4 flex-grow ">
         <div className="flex w-[250px] flex-col gap-1 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20">
           <img
@@ -150,8 +150,8 @@ const Home = () => {
       </div>
 
       <div className="flex flex-row gap-1 h-[246px]">
-        <div className="flex-grow rounded-3xl bg-gray-950/40 p-6">
-          Bottom Left
+        <div className="flex-grow rounded-3xl overflow-hidden bg-gray-950/40">
+          <ProjectWheel />
         </div>
         <div className="w-[680px] rounded-3xl overflow-hidden bg-gray-950/40 p-1 flex justify-center items-center">
           <MusicPlayer />

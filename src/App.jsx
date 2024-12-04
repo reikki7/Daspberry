@@ -46,7 +46,7 @@ const AppContent = () => {
         <Navbar />
         <div
           data-tauri-drag-region
-          className="flex max-w-[1320px] pb-6 max-h-[1035px] min-w-[1320px] min-h-[1035px]"
+          className="flex max-w-[1323px] pb-6 max-h-[1032px] min-w-[1320px] min-h-[1038px]"
         >
           <div
             className="flex-1 pr-12 pb-16 text-white pt-20"
