@@ -267,7 +267,6 @@ const ProjectWheel = () => {
 
   const toggleGithub = () => {
     if (category === "Github") {
-      // open my repositories
       open("https://github.com/reikki7?tab=repositories");
     } else {
       fetchRepositories();
