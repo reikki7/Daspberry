@@ -93,3 +93,15 @@
     transform: translateX(100px);
   }
 }
+
+button:focus {
+  outline: none; /* Remove the default outline */
+}
+
+button:focus:not(:focus-visible) {
+  outline: none; /* Suppress outline when focus is not visible */
+}
+
+button:focus-visible {
+  outline: 1px solid #d6aaff; /* Keep focus styles for keyboard navigation if desired */
+}

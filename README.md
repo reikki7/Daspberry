@@ -1,6 +1,6 @@
 # Daspberry
 
-Daspberry is my very personal dashboard application. It provides a seamless user experience with various integrated tools and functionalities, including a calendar, game progress tracker, photo and video works management, task management, and monetary tracking.
+Daspberry is my very personal dashboard application. It provides a seamless user experience with various integrated tools and functionalities, including a calendar, game progress tracker, photo and video works management, task management, and projects tracking.
 
 Feel free to customize this project further to fit your specific needs. You can add more screens, change the sections, or include additional features as needed.
 

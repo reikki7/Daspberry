@@ -78,13 +78,13 @@ const MiniCalendar = () => {
             onClick={prevMonth}
             className="p-2 hover:bg-white/5 rounded-lg transition-all duration-300"
           >
-            <ChevronLeft className="w-4 h-4 text-cyan-400" />
+            <ChevronLeft className="w-4 h-4 text-cyan-100" />
           </button>
           <button
             onClick={nextMonth}
             className="p-2 hover:bg-white/5 rounded-lg transition-all duration-300"
           >
-            <ChevronRight className="w-4 h-4 text-cyan-400" />
+            <ChevronRight className="w-4 h-4 text-cyan-100" />
           </button>
         </div>
       </div>
@@ -115,7 +115,7 @@ const MiniCalendar = () => {
                   day === null
                     ? ""
                     : isToday(day)
-                    ? "bg-[#05f7ff] text-cyan-400 font-bold"
+                    ? "bg-[#05f7ff] hover:bg-opacity-80 text-cyan-400 font-bold"
                     : "bg-white/5 text-white/80 hover:bg-white/10 hover:text-cyan-400"
                 }
                 ${day === null ? "" : "cursor-pointer"}

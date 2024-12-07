@@ -31,7 +31,7 @@ const Clock = () => {
     const fetchWeather = async () => {
       try {
         const response = await axios.get(
-          `http://api.weatherapi.com/v1/current.json?key=${weatherApiKey}&q=${weatherLocation}&aqi=no`
+          `https://api.weatherapi.com/v1/current.json?key=${weatherApiKey}&q=${weatherLocation}&aqi=no`
         );
         const weatherData = {
           icon: response.data.current.condition.icon,
@@ -83,7 +83,7 @@ const Home = () => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="flex flex-col gap-1 h-[873px]">
+    <div className="flex flex-col gap-1 h-[864px]">
       <div className="flex gap-0.5 relative flex-row h-3/4 flex-grow ">
         <div className="flex w-[250px] flex-col gap-1 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20">
           <img
@@ -149,11 +149,11 @@ const Home = () => {
         </div>
       </div>
 
-      <div className="flex flex-row gap-1 h-[246px]">
+      <div className="flex flex-row gap-1 h-[235px]">
         <div className="flex-grow rounded-3xl overflow-hidden bg-gray-950/40">
           <ProjectWheel />
         </div>
-        <div className="w-[680px] rounded-3xl overflow-hidden bg-gray-950/40 p-1 flex justify-center items-center">
+        <div className="w-[682px] rounded-3xl overflow-hidden bg-gray-950/40 p-1 flex justify-center items-center">
           <MusicPlayer />
         </div>
       </div>

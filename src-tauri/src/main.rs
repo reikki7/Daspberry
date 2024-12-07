@@ -9,7 +9,6 @@ use serde::Serialize;
 use std::path::Path;
 use serde_json::Value;
 
-
 #[derive(serde::Serialize)]
 struct Folder {
     name: String,
@@ -28,7 +27,6 @@ struct ProjectInfo {
     framework: Option<String>,
     languages: Vec<String>,
 }
-
 
 #[command]
 fn get_project_folders(path: String) -> Result<Vec<Folder>, String> {
@@ -215,9 +213,24 @@ fn read_github_repos_cache() -> Result<String, String> {
     }
 }
 
+#[command]
+fn clear_github_cache() -> Result<(), String> {
+    let cache_path = dirs::data_local_dir()
+        .ok_or_else(|| "Failed to get local data directory".to_string())?
+        .join("github_repos_cache.json");
+
+    if cache_path.exists() {
+        fs::remove_file(&cache_path).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("Cache file does not exist".to_string())
+    }
+}
+
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache])
+        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

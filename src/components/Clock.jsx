@@ -1,4 +1,3 @@
-// src/components/Clock.jsx
 import React, { useEffect, useState } from "react";
 
 const Clock = () => {

@@ -16,7 +16,7 @@ import GameProgress from "./screens/GameProgress";
 import PhotoWorks from "./screens/PhotoWorks";
 import VideoWorks from "./screens/VideoWorks";
 import Tasks from "./screens/Tasks";
-import Monetary from "./screens/Monetary";
+import Projects from "./screens/Projects";
 
 const EmptyHome = () => null;
 
@@ -66,7 +66,7 @@ const AppContent = () => {
               <Route path="/photo-works" element={<PhotoWorks />} />
               <Route path="/video-works" element={<VideoWorks />} />
               <Route path="/tasks" element={<Tasks />} />
-              <Route path="/monetary" element={<Monetary />} />
+              <Route path="/projects" element={<Projects />} />
             </Routes>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React from "react";
 
-const VolumeSlider = ({ value, onChange, isMuted }) => {
+const VolumeSlider = ({ value, onChange, isMuted, volumeSliderRef }) => {
   return (
     <div className="bg-gray-950/40 p-3 rounded-3xl">
       <div className="relative h-28 w-[5px] mx-auto">
@@ -22,6 +22,7 @@ const VolumeSlider = ({ value, onChange, isMuted }) => {
           step="0.001"
           value={isMuted ? 0 : value}
           onChange={onChange}
+          ref={volumeSliderRef}
           className="absolute transform duration-300 rotate-[-90deg] h-28 -mx-[53.6px]
             appearance-none w-28 bg-transparent cursor-pointer
             [&::-webkit-slider-runnable-track]:appearance-none

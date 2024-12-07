@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/tauri";
 import { parseBlob } from "music-metadata";
 import {
@@ -39,8 +39,10 @@ const MusicPlayer = () => {
   const [songMetadata, setSongMetadata] = useState({});
   const [albumArtList, setAlbumArtList] = useState([]);
 
+  const isShuffleRef = useRef(isShuffle);
   const isLoopingSingleRef = useRef(isLoopingSingle);
   const currentTrackIndexRef = useRef(currentTrackIndex);
+  const volumeSliderRef = useRef(null);
 
   // Play a random track on initial load
   useEffect(() => {
@@ -62,67 +64,162 @@ const MusicPlayer = () => {
     currentTrackIndexRef.current = currentTrackIndex;
   }, [isLoopingSingle, currentTrackIndex]);
 
-  // Update current time every 10ms
+  // Update shuffle ref
   useEffect(() => {
-    if (currentSound) {
-      const interval = setInterval(() => {
-        setCurrentTime(currentSound.seek() || 0);
-      }, 10);
+    isShuffleRef.current = isShuffle;
+  }, [isShuffle]);
 
-      return () => clearInterval(interval);
-    }
-  }, [currentSound]);
-
-  // Update volume on change
+  // Combined Volume and Playing State Effect
   useEffect(() => {
-    if (currentSound) {
-      currentSound.volume(volume);
-    }
-  }, [volume, currentSound]);
+    const updatePlayerState = () => {
+      if (currentSound) {
+        // Update volume
+        currentSound.volume(isMuted ? 0 : volume);
+
+        // Update current time
+        const timeInterval = setInterval(() => {
+          setCurrentTime(currentSound.seek() || 0);
+        }, 10);
+
+        // Update refs for event handlers
+        playerStateRef.current = {
+          isLoopingSingle,
+          currentTrackIndex,
+          currentSound,
+        };
+
+        return () => {
+          clearInterval(timeInterval);
+        };
+      }
+    };
+
+    const cleanup = updatePlayerState();
+    return cleanup;
+  }, [currentSound, volume, isMuted, isLoopingSingle, currentTrackIndex]);
 
   // Fetch song metadata on music files change
   useEffect(() => {
     if (musicFiles.length > 0) {
       fetchSongMetadata(musicFiles);
     }
-    console.log("Fetched song metadata:", songMetadata);
   }, [musicFiles, currentSound]);
 
-  // Keyboard shortcuts
+  // Consolidated refs
+  const playerStateRef = useRef({
+    isLoopingSingle: false,
+    currentTrackIndex: 0,
+    currentSound: null,
+  });
+
+  // Keyboard Shortcuts Handler (Consolidated Effect)
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (!currentSound) return;
+      const { currentSound, isLoopingSingle, currentTrackIndex } =
+        playerStateRef.current;
+
+      if (!currentSound || musicMenu) return;
+
+      // Prevent default behavior for Spacebar
+      if (
+        event.code === "Space" &&
+        document.activeElement.tagName === "INPUT"
+      ) {
+        event.preventDefault();
+        document.activeElement.blur();
+      }
 
       switch (event.code) {
-        case "Space": // Play/Pause
+        case "Space":
           event.preventDefault();
-          if (isPlaying) {
-            currentSound.pause();
+          isPlaying ? currentSound.pause() : currentSound.play();
+          break;
+
+        case "Enter":
+          event.preventDefault();
+          setMusicMenu((prev) => !prev);
+          event.stopPropagation();
+          break;
+
+        case "KeyS":
+          event.preventDefault();
+          isShuffleRef.current = !isShuffle;
+          setIsShuffle((prev) => !prev);
+          break;
+
+        // Toggle Shuffle
+        case "KeyR":
+        case "KeyL":
+          event.preventDefault();
+          isLoopingSingleRef.current = !isLoopingSingle;
+          setIsLoopingSingle((prev) => !prev);
+          break;
+
+        // Mute/Unmute
+        case "KeyM":
+          event.preventDefault();
+          setIsMuted((prev) => {
+            const newMutedState = !prev;
+            currentSound.mute(newMutedState);
+            return newMutedState;
+          });
+          break;
+
+        case "ArrowUp":
+          event.preventDefault();
+          const increasedVolume = Math.min(currentSound.volume() + 0.03, 1);
+          currentSound.volume(increasedVolume); // Update Howler's volume
+          setVolume(increasedVolume); // Update React state
+          event.stopPropagation();
+          break;
+
+        case "ArrowDown":
+          event.preventDefault();
+          const decreasedVolume = Math.max(currentSound.volume() - 0.03, 0);
+          currentSound.volume(decreasedVolume); // Update Howler's volume
+          setVolume(decreasedVolume); // Update React state
+          event.stopPropagation();
+          break;
+
+        case "ArrowRight":
+          event.preventDefault();
+          if (event.ctrlKey) {
+            currentSound.seek(
+              Math.min(currentSound.seek() + 20, currentSound.duration())
+            );
+          } else if (event.shiftKey) {
+            playMusic(
+              getNextTrackIndex(currentTrackIndex),
+              isPlaying ? true : false
+            );
           } else {
-            currentSound.play();
+            currentSound.seek(
+              Math.min(currentSound.seek() + 2, currentSound.duration())
+            );
           }
           break;
 
-        case "ArrowRight": // Seek forward
-          currentSound.seek(
-            Math.min(currentSound.seek() + 2, currentSound.duration())
-          );
-          break;
-
-        case "ArrowLeft": // Seek backward
-          currentSound.seek(Math.max(currentSound.seek() - 2, 0));
-          break;
-
-        default:
+        case "ArrowLeft":
+          if (event.ctrlKey) {
+            currentSound.seek(Math.max(currentSound.seek() - 20, 0));
+          } else if (event.shiftKey) {
+            playMusic(
+              getPrevTrackIndex(currentTrackIndex),
+              isPlaying ? true : false
+            );
+          } else {
+            currentSound.seek(Math.max(currentSound.seek() - 2, 0));
+          }
           break;
       }
+      document.activeElement.blur();
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [currentSound, isPlaying]);
+  }, [musicMenu, isPlaying, currentSound]);
 
   // Load music files from the system
   const loadMusicFiles = async () => {
@@ -148,27 +245,36 @@ const MusicPlayer = () => {
     return shuffledArray;
   };
 
-  // Get the actual index to play based on shuffle state
-  const getPlayIndex = (requestedIndex) => {
-    if (!isShuffle) return requestedIndex;
-    return shuffledIndices.findIndex((idx) => idx === requestedIndex);
-  };
+  const getPlayIndex = useCallback(
+    (requestedIndex) => {
+      return !isShuffle
+        ? requestedIndex
+        : shuffledIndices.findIndex((idx) => idx === requestedIndex);
+    },
+    [isShuffle, shuffledIndices]
+  );
 
-  // Get the next track index based on shuffle state
-  const getNextTrackIndex = (currentIndex) => {
-    if (!isShuffle) {
-      return (currentIndex + 1) % musicFiles.length;
-    }
-    return (currentIndex + 1) % shuffledIndices.length;
-  };
+  const getNextTrackIndex = useCallback(
+    (currentIndex) => {
+      return !isShuffle
+        ? (currentIndex + 1) % musicFiles.length
+        : (currentIndex + 1) % shuffledIndices.length;
+    },
+    [isShuffle, musicFiles.length, shuffledIndices.length]
+  );
 
-  // Get the previous track index based on shuffle state
-  const getPrevTrackIndex = (currentIndex) => {
-    if (!isShuffle) {
-      return currentIndex === 0 ? musicFiles.length - 1 : currentIndex - 1;
-    }
-    return currentIndex === 0 ? shuffledIndices.length - 1 : currentIndex - 1;
-  };
+  const getPrevTrackIndex = useCallback(
+    (currentIndex) => {
+      return !isShuffle
+        ? currentIndex === 0
+          ? musicFiles.length - 1
+          : currentIndex - 1
+        : currentIndex === 0
+        ? shuffledIndices.length - 1
+        : currentIndex - 1;
+    },
+    [isShuffle, musicFiles.length, shuffledIndices.length]
+  );
 
   // IndexedDB
   const initDB = async () => {
@@ -265,35 +371,6 @@ const MusicPlayer = () => {
     }
   };
 
-  // Clear old entries from both stores
-  const clearOldCache = async () => {
-    try {
-      const db = await initDB();
-      const transaction = db.transaction(["metadata", "albumArt"], "readwrite");
-      const metadataStore = transaction.objectStore("metadata");
-      const albumArtStore = transaction.objectStore("albumArt");
-      const index = metadataStore.index("timestamp");
-
-      const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-      const cutoffTime = Date.now() - maxAge;
-
-      const range = IDBKeyRange.upperBound(cutoffTime);
-
-      // Clear old metadata
-      const metadataRequest = index.openCursor(range);
-      metadataRequest.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          metadataStore.delete(cursor.primaryKey);
-          albumArtStore.delete(cursor.primaryKey); // Also delete corresponding album art
-          cursor.continue();
-        }
-      };
-    } catch (error) {
-      console.error("Error clearing cache:", error);
-    }
-  };
-
   // Fetch and parse song metadata
   const fetchSongMetadata = async (musicFiles) => {
     const songData = await Promise.all(
@@ -309,7 +386,6 @@ const MusicPlayer = () => {
           }
 
           // If not in cache, fetch and parse metadata
-          console.log("Fetching metadata for:", file.path);
           const url = convertFileSrc(file.path);
           const response = await fetch(url);
 
@@ -456,6 +532,12 @@ const MusicPlayer = () => {
 
     setCurrentTrackIndex(actualIndex);
     setCurrentSound(sound);
+
+    playerStateRef.current = {
+      isLoopingSingle,
+      currentTrackIndex: actualIndex,
+      currentSound: sound,
+    };
   };
 
   // Add cleanup effect for album art URLs
@@ -483,7 +565,9 @@ const MusicPlayer = () => {
 
   // Toggle shuffle
   const toggleShuffle = () => {
-    if (!isShuffle) {
+    const currentShuffleState = isShuffleRef.current;
+
+    if (!currentShuffleState) {
       const newShuffledIndices = shuffleArray(
         Array.from({ length: musicFiles.length }, (_, i) => i)
       );
@@ -503,7 +587,10 @@ const MusicPlayer = () => {
         setCurrentTrackIndex(originalIndex);
       }
     }
-    setIsShuffle(!isShuffle);
+
+    // Update state and ref
+    setIsShuffle((prev) => !prev);
+    isShuffleRef.current = !currentShuffleState; // Update the ref directly
   };
 
   // Toggle play/pause
@@ -528,6 +615,10 @@ const MusicPlayer = () => {
 
   // Handle volume change
   const handleVolumeChange = (e) => {
+    if (isMuted) {
+      toggleMute();
+      setIsMuted(false);
+    }
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
   };
@@ -565,46 +656,38 @@ const MusicPlayer = () => {
   };
 
   useEffect(() => {
-    console.log("Album Art", albumArt);
-  }, [albumArt, currentSound]);
+    const handleWheel = (event) => {
+      event.preventDefault();
+      const delta = Math.sign(event.deltaY);
+      setVolume((prevVolume) => {
+        let newVolume = prevVolume - delta * 0.05; // Adjust the step size as needed
+        if (newVolume < 0) newVolume = 0;
+        if (newVolume > 1) newVolume = 1;
+        return newVolume;
+      });
+    };
 
-  const handleError = () => {
-    setAlbumArt(artDefault);
-  };
+    const volumeSlider = volumeSliderRef.current;
+    if (volumeSlider) {
+      volumeSlider.addEventListener("wheel", handleWheel);
+    }
+
+    return () => {
+      if (volumeSlider) {
+        volumeSlider.removeEventListener("wheel", handleWheel);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex w-full text-white rounded-3xl justify-between overflow-hidden relative">
-      {/* Hidden Image for Error Handling */}
-      <img
-        src={albumArt}
-        alt="error handling image"
-        onError={handleError}
-        style={{ display: "none" }}
-      />
-
-      {/* Blurred Background */}
-      <div
-        className="absolute inset-0 z-0 rounded-3xl"
-        style={{
-          backgroundImage:
-            albumArt === "/src/assets/art-default.jpg"
-              ? null
-              : `url(${albumArt})`,
-          backgroundSize: "cover",
-          backgroundPosition: "40%",
-          backgroundRepeat: "no-repeat",
-          filter: "blur(15px)",
-          opacity: 0.1,
-        }}
-      ></div>
-
       {/* Foreground Content */}
       <div className="relative z-10 flex w-full justify-between items-center">
         {/* Volume */}
         <div className="flex flex-col items-center px-3 pl-4 justify-center gap-1.5">
           <button
             onClick={toggleMute}
-            className="w-14 h-14 flex items-center justify-center shadow-xl bg-white/10 rounded-full text-white hover:opacity-80"
+            className="w-14 h-14 flex items-center justify-center duration-200 shadow-xl bg-white/10 rounded-full text-white hover:opacity-80"
             style={{ filter: "drop-shadow(2px 2px 20px #000000)" }}
           >
             <div className="bg-gray-950/40 w-10 h-10 flex justify-center items-center rounded-full">
@@ -617,6 +700,7 @@ const MusicPlayer = () => {
               value={volume}
               onChange={handleVolumeChange}
               isMuted={isMuted}
+              volumeSliderRef={volumeSliderRef}
             />
           </div>
         </div>
@@ -653,10 +737,12 @@ const MusicPlayer = () => {
               currentTrack={currentTrack}
               togglePlay={togglePlay}
               setMusicMenu={setMusicMenu}
+              musicMenu={musicMenu}
               tags={tags}
               albumArt={albumArt}
               albumArtList={albumArtList}
               metadata={songMetadata}
+              setIsPlaying={setIsPlaying}
               isPlaying={isPlaying}
               toggleNextTrack={toggleNextTrack}
               togglePrevTrack={togglePrevTrack}
@@ -725,6 +811,7 @@ const MusicPlayer = () => {
 
         {/* Album Art */}
         <img
+          onError={() => setAlbumArt(artDefault)}
           src={albumArt}
           className="relative z-10 h-[227px] rounded-3xl w-[227px]"
           alt="Album Art"

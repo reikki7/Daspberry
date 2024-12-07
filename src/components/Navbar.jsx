@@ -33,9 +33,9 @@ const Navbar = () => {
           </Link>
         </li>
         <li>
-          <Link to="/monetary">
+          <Link to="/projects">
             <div className="bg-gray-950/40 px-6 py-2 rounded-full hover:opacity-70 duration-200">
-              Monetary
+              Projects
             </div>
           </Link>
         </li>

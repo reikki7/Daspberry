@@ -61,10 +61,7 @@
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
         "timestampUrl": "",
-        "wiX": {
-          "bannerPath": "public/images/banner.bmp",
-          "dialogImagePath": "public/images/dialog.bmp"
-        }
+        "wix": {}
       }
     },
     "security": {

@@ -8,7 +8,12 @@ import { SiNextdotjs, SiSvelte } from "react-icons/si";
 import { IoLogoJavascript } from "react-icons/io5";
 import { BiLogoTypescript } from "react-icons/bi";
 import { MdNotes } from "react-icons/md";
-import { Github, FolderGit2, BriefcaseBusiness } from "lucide-react";
+import {
+  Github,
+  FolderGit2,
+  BriefcaseBusiness,
+  RefreshCwIcon,
+} from "lucide-react";
 import ScaleLoader from "react-spinners/ScaleLoader";
 
 import PythonIcon from "../assets/pythonIcon.png";
@@ -68,19 +73,18 @@ const ProjectWheel = () => {
     try {
       setLoading(true);
 
-      // Read cache from backend
       let repos = [];
       let parsedCache = null;
+
       try {
         const cachedData = await invoke("read_github_repos_cache");
-        const parsedCache = JSON.parse(cachedData);
+        parsedCache = JSON.parse(cachedData);
 
-        // Check if cache is recent (e.g., within 24 hours)
+        // Check if cache is valid (e.g., within 24 hours)
         const isCacheValid =
           Date.now() - parsedCache.timestamp < 24 * 60 * 60 * 1000;
         if (isCacheValid) {
           repos = parsedCache.data;
-          console.log("Using cached data");
         }
       } catch (error) {
         console.warn("Cache not found or invalid:", error);
@@ -90,14 +94,15 @@ const ProjectWheel = () => {
         // Fetch from GitHub API if cache is invalid
         const response = await fetch(import.meta.env.VITE_GITHUB_API_URL);
         const data = await response.json();
-        const lastModified = formatLastModified(new Date().getTime() / 1000);
 
         repos = data.map((repo, index) => ({
           id: index + 1,
           content: repo.name,
           path: repo.html_url,
           framework: repo.language || "Unknown",
-          lastModified,
+          lastModified: formatLastModified(
+            new Date(repo.pushed_at).getTime() / 1000
+          ),
           exiting: false,
           description: repo.description,
         }));
@@ -109,15 +114,6 @@ const ProjectWheel = () => {
       }
 
       setItems(repos);
-
-      // Optionally, log updated repositories
-      const updatedRepos = repos.filter(
-        (repo) =>
-          new Date(repo.lastModified).getTime() > (parsedCache?.timestamp || 0)
-      );
-      if (updatedRepos.length) {
-        console.log("Updated Repositories:", updatedRepos);
-      }
     } catch (error) {
       console.error("Error fetching repositories:", error);
     } finally {
@@ -291,11 +287,31 @@ const ProjectWheel = () => {
     }
   };
 
+  const resetGithubData = async () => {
+    try {
+      await invoke("cache_github_repos", { data: JSON.stringify({}) });
+      fetchRepositories();
+    } catch (error) {
+      console.error("Failed to reset GitHub data:", error);
+    }
+  };
+
   return (
     <div className="flex items-center justify-between">
-      <div className="mb-14 flex flex-col justify-center items-center w-1/4">
+      <div className="mb-14 flex flex-col justify-center items-center w-1/4 relative">
+        {category === "Github" && (
+          <div>
+            {/* Refetch Data */}
+            <button
+              onClick={resetGithubData}
+              className="absolute bg-[#1d66f0] text-gray-950/40 rounded-bl-lg rounded-tr-lg rounded-br-3xl rounded-tl-3xl p-[9px] tp[-1 left-0"
+            >
+              <RefreshCwIcon size={15} color="white" />
+            </button>
+          </div>
+        )}
         <div className="flex flex-col justify-center items-center w-full p-2 bg-gradient-to-r from-gray-950/10 via-blue-950/30 to-gray-950/10 rounded-2xl shadow-lg">
-          <div className="flex flex-col gap-5 p-4 -mt-1">
+          <div className="flex flex-col gap-5 p-4 -mt-2">
             {/* GitHub Button */}
             <button
               onClick={toggleGithub}
@@ -363,7 +379,7 @@ const ProjectWheel = () => {
         <div
           ref={containerRef}
           onWheel={handleWheel}
-          className="h-[400px] overflow-hidden relative w-3/4 -mt-24"
+          className="h-[400px] overflow-hidden relative w-3/4 -mt-28"
         >
           {getVisibleItems().map((item, index) => {
             if (!item) return null;
@@ -378,9 +394,7 @@ const ProjectWheel = () => {
 
             function openFolderInVSCode(path) {
               invoke("open_folder_in_vscode", { path })
-                .then(() => {
-                  console.log(`Opened folder ${path} in VSCode`);
-                })
+                .then(() => {})
                 .catch((error) => {
                   console.error(
                     `Failed to open folder ${path} in VSCode:`,
@@ -405,7 +419,7 @@ const ProjectWheel = () => {
                 <div className="relative">
                   <div className="absolute inset-0 backdrop-blur-sm bg-black/5 rounded-3xl" />
                   <div className="relative bg-gradient-to-br from-gray-900/20 to-gray-950/40 rounded-3xl shadow-lg shadow-black/20 h-52 w-[410px] p-8 flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex -mt-[6px] items-center gap-4">
                       {frameworkIcons[item.framework] || (
                         <FaGlobe className="w-6 h-6 text-gray-500" />
                       )}

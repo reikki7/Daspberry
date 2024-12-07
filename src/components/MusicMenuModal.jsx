@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 import artDefault from "../assets/art-default.jpg";
 import {
@@ -17,10 +17,12 @@ const MusicMenuModal = ({
   currentTrack,
   togglePlay,
   setMusicMenu,
+  musicMenu,
   tags,
   albumArt,
   albumArtList,
   metadata,
+  setIsPlaying,
   isPlaying,
   toggleNextTrack,
   togglePrevTrack,
@@ -30,26 +32,21 @@ const MusicMenuModal = ({
   isShuffle,
   isLoopingSingle,
 }) => {
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      setMusicMenu(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      setMusicMenu(false);
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-
   const [searchTerm, setSearchTerm] = useState("");
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isUsingArrowKeys, setIsUsingArrowKeys] = useState(false);
+
+  const listRef = useRef(null);
+  const itemRefs = useRef([]);
+  const searchInputRef = useRef(null);
+  const keyHeldDown = useRef(false);
+
+  itemRefs.current = [];
+
+  const currentFile = musicFiles.find(
+    (musicFile) => convertFileSrc(musicFile.path) === currentTrack
+  );
 
   const filteredMusic = musicFiles.filter((file, index) => {
     const meta = metadata[index];
@@ -74,6 +71,146 @@ const MusicMenuModal = ({
 
     return titleMatch || artistMatch;
   });
+
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      setMusicMenu(false);
+      setIsUsingArrowKeys(false);
+    }
+  };
+
+  useEffect(() => {
+    if (focusedIndex < 0) {
+      setFocusedIndex(0);
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        document.activeElement.blur();
+        setMusicMenu(false);
+      }
+
+      if (e.key === "/") {
+        e.preventDefault();
+        document.activeElement.blur();
+        setIsSearchFocused(true);
+        searchInputRef.current.focus();
+        setFocusedIndex(0);
+      }
+
+      if (
+        document.activeElement.tagName === "INPUT" &&
+        ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)
+      ) {
+        document.activeElement.blur();
+        setIsSearchFocused(false);
+        setIsUsingArrowKeys(true);
+        return;
+      }
+
+      if (isSearchFocused) return;
+
+      if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+        setIsUsingArrowKeys(true);
+
+        if (e.key === "ArrowUp") {
+          if (focusedIndex !== 0) {
+            setFocusedIndex((prevIndex) =>
+              prevIndex === 0
+                ? filteredMusic.length - 1
+                : prevIndex === 1
+                ? filteredMusic.length - 2
+                : prevIndex - 2
+            );
+          } else if (!keyHeldDown.current) {
+            setFocusedIndex(filteredMusic.length - 1);
+          }
+        } else if (e.key === "ArrowDown") {
+          if (focusedIndex < filteredMusic.length - 1) {
+            setFocusedIndex((prevIndex) =>
+              prevIndex === 0 && !isUsingArrowKeys
+                ? 0
+                : prevIndex === filteredMusic.length - 1
+                ? 0
+                : prevIndex + 2
+            );
+          } else if (!keyHeldDown.current) {
+            setFocusedIndex(0);
+          }
+        } else if (e.key === "ArrowRight") {
+          setFocusedIndex((prevIndex) =>
+            prevIndex === 0 && !isUsingArrowKeys
+              ? 0
+              : prevIndex === filteredMusic.length - 1
+              ? 0
+              : prevIndex + 1
+          );
+        } else if (e.key === "ArrowLeft") {
+          setFocusedIndex((prevIndex) =>
+            prevIndex === 0 && !isUsingArrowKeys
+              ? 0
+              : prevIndex === 0
+              ? filteredMusic.length - 1
+              : prevIndex - 1
+          );
+        }
+
+        keyHeldDown.current = true;
+      } else if (e.key === "Enter" && musicMenu) {
+        e.preventDefault();
+        const selectedFile = filteredMusic[focusedIndex];
+        const originalIndex = musicFiles.findIndex(
+          (musicFile) => musicFile.path === selectedFile.path
+        );
+        togglePlay(originalIndex);
+        setIsUsingArrowKeys(false);
+      } else if (e.key === " ") {
+        e.preventDefault();
+        togglePlayPause();
+        setIsPlaying(!isPlaying);
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        keyHeldDown.current = false;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [
+    focusedIndex,
+    filteredMusic,
+    musicFiles,
+    togglePlay,
+    togglePlayPause,
+    setIsPlaying,
+    isPlaying,
+    setMusicMenu,
+    isSearchFocused,
+  ]);
+
+  useEffect(() => {
+    if (focusedIndex >= filteredMusic.length) {
+      setFocusedIndex(filteredMusic.length - 1);
+    }
+  }, [filteredMusic, focusedIndex]);
+
+  useEffect(() => {
+    if (itemRefs.current[focusedIndex]) {
+      itemRefs.current[focusedIndex].scrollIntoView({
+        behavior: "instant",
+        block: "nearest",
+      });
+    }
+  }, [focusedIndex]);
 
   return (
     <div
@@ -142,7 +279,7 @@ const MusicMenuModal = ({
                 </p>
                 <h3 className="text-white font-medium truncate">
                   {tags?.title ||
-                    file.name.replace(/\.mp3$/i, "") ||
+                    currentFile?.name.replace(/\.mp3$/i, "") ||
                     "Unknown Title"}
                 </h3>
                 {tags?.artists ? (
@@ -207,12 +344,22 @@ const MusicMenuModal = ({
           <div className="p-3">
             <div className="relative">
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search by title, artist, or album..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                }}
+                onFocus={() => {
+                  setIsSearchFocused(true);
+                  setIsUsingArrowKeys(false);
+                  setFocusedIndex(0);
+                }}
+                onBlur={() => setIsSearchFocused(false)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-white/40 focus:outline-none"
               />
+
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
@@ -227,26 +374,40 @@ const MusicMenuModal = ({
 
         {/* Music List */}
         <div
+          ref={listRef}
           className={`p-2 overflow-y-auto custom-scrollbar ${
             currentTrack ? "h-[523px]" : "h-[667px]"
           } `}
+          role="listbox"
+          aria-activedescendant={`song-${focusedIndex}`}
         >
           <div className="grid grid-cols-2 gap-1">
             {filteredMusic.map((file, index) => {
               const originalIndex = musicFiles.findIndex(
                 (musicFile) => musicFile.path === file.path
               );
+              const isFocused = isUsingArrowKeys && index === focusedIndex;
+              itemRefs.current[index] = itemRefs.current[index] || null;
               return (
                 <button
+                  ref={(el) => (itemRefs.current[index] = el)}
+                  id={`song-${index}`}
                   key={index}
-                  onClick={() => togglePlay(originalIndex)}
+                  onClick={() => {
+                    togglePlay(originalIndex);
+                    setIsUsingArrowKeys(false); // Clear highlight on click
+                  }}
                   className={`w-full p-1 flex items-center text-left rounded-xl duration-200 group
-                    ${
-                      currentTrack === convertFileSrc(file.path)
-                        ? "bg-white/20 text-white"
-                        : "text-white/60 hover:bg-white/10 hover:text-white"
-                    }
-                  `}
+                  ${
+                    currentTrack === convertFileSrc(file.path)
+                      ? `bg-white/20 ${
+                          isFocused ? "text-white/60" : "text-white"
+                        }`
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  }
+                  ${isFocused ? "bg-white/10 text-white" : ""}`}
+                  role="option"
+                  aria-selected={isFocused}
                 >
                   {/* Play indicator */}
                   <div className="w-8 h-8 flex items-center justify-center">
@@ -270,7 +431,7 @@ const MusicMenuModal = ({
                     <div className="ml-4 max-w-[230px]">
                       <span className="block text-sm font-semibold truncate">
                         {metadata[originalIndex]?.title ||
-                          file.name.replace(/\.mp3$/i, "") ||
+                          file?.name.replace(/\.mp3$/i, "") ||
                           "Unknown Title"}
                       </span>
                       <span className="block text-xs text-white/40">
