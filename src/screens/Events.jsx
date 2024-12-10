@@ -34,7 +34,7 @@ const Events = () => {
 
     const interval = setInterval(fetchEvents, 12 * 60 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tokens]);
 
   const getAuthUrl = async () => {
     const url = await invoke("get_google_auth_url");
@@ -240,27 +240,50 @@ const Events = () => {
                         <p className="text-xs text-gray-400">
                           {(() => {
                             const now = new Date();
-                            const eventDate = new Date(event.start);
-                            const timeDifference = eventDate - now;
+                            const timeDifference = new Date(event.start) - now;
+
+                            if (timeDifference < 0) return "(event has passed)";
+
+                            const yearsDifference = Math.floor(
+                              timeDifference / (1000 * 60 * 60 * 24 * 365.25)
+                            );
+                            const monthsDifference = Math.floor(
+                              timeDifference / (1000 * 60 * 60 * 24 * 30.44)
+                            );
                             const daysDifference = Math.floor(
                               timeDifference / (1000 * 60 * 60 * 24)
                             );
                             const hoursDifference = Math.floor(
-                              timeDifference / (1000 * 60 * 60)
+                              (timeDifference % (1000 * 60 * 60 * 24)) /
+                                (1000 * 60 * 60)
+                            );
+                            const minutesDifference = Math.floor(
+                              (timeDifference % (1000 * 60 * 60)) / (1000 * 60)
                             );
 
-                            if (daysDifference === 0 && hoursDifference > 0) {
-                              return `(in ${hoursDifference} hours)`;
-                            } else if (daysDifference === 1) {
-                              return "(tomorrow)";
-                            } else if (daysDifference <= 6) {
-                              return `(in ${daysDifference} days)`;
-                            } else if (daysDifference <= 14) {
-                              return "(next week)";
-                            } else {
-                              return `(in ${Math.ceil(
-                                daysDifference / 7
-                              )} weeks)`;
+                            switch (true) {
+                              case yearsDifference > 0:
+                                return `(in ${yearsDifference} ${
+                                  yearsDifference === 1 ? "year" : "years"
+                                })`;
+                              case monthsDifference > 0:
+                                return `(in ${monthsDifference} ${
+                                  monthsDifference === 1 ? "month" : "months"
+                                })`;
+                              case daysDifference > 14:
+                                return `(in ${Math.ceil(
+                                  daysDifference / 7
+                                )} weeks)`;
+                              case daysDifference > 6:
+                                return "(next week)";
+                              case daysDifference > 1:
+                                return `(in ${daysDifference} days)`;
+                              case daysDifference === 1:
+                                return "(tomorrow)";
+                              case hoursDifference > 0:
+                                return `(in ${hoursDifference} hours)`;
+                              default:
+                                return `(in ${minutesDifference} minutes)`;
                             }
                           })()}
                         </p>
