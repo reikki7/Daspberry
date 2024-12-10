@@ -85,13 +85,17 @@ const Home = () => {
   return (
     <div className="flex flex-col gap-1 h-[864px]">
       <div className="flex gap-0.5 relative flex-row h-3/4 flex-grow ">
-        <div className="flex w-[250px] flex-col gap-1 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20">
+        <div
+          className="flex w-[250px] flex-col gap-1 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20"
+          style={{ userSelect: "none" }}
+        >
           <img
             src="/main-background.jpg"
             alt="Background"
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300 ease-in-out"
             style={{
               objectPosition: "100%",
+              userSelect: "none",
             }}
           />
         </div>
@@ -99,6 +103,7 @@ const Home = () => {
         <div
           className="absolute rounded-lg flex left-0 right-0 mx-64 -top-9 justify-center mr-[367px] z-10"
           data-tauri-drag-region
+          style={{ userSelect: "none" }}
         >
           <Clock />
         </div>
@@ -112,6 +117,7 @@ const Home = () => {
           }`}
           style={{
             filter: "invert(100%) brightness(200%)",
+            userSelect: "none",
           }}
         />
         <div
@@ -121,6 +127,7 @@ const Home = () => {
           style={{
             clipPath:
               "path('M 0 0 L 221 0 C 234 0 240 0 250 7 L 358 74 C 378 87 441 90 470 74 L 577 6 C 587 0 592 0 602 0 L 845 0 l 0 433 C 845 445 841 449 832 449 l -30 0 C 784 449 779 449 765 466 L 649 603 C 631 624 626 624 605 624 L 0 624 Z')",
+            userSelect: "none",
           }}
         >
           <img
@@ -129,6 +136,7 @@ const Home = () => {
             className={`absolute inset-0 w-full h-full object-cover rounded-3xl transition-transform duration-300 ease-in-out ${
               isHovered ? "scale-105" : "scale-100"
             }`}
+            style={{ userSelect: "none" }}
           />
         </div>
 

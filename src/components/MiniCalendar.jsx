@@ -198,7 +198,7 @@ const MiniCalendar = () => {
       {/* Separator */}
       <div className="border-t border-white/10 my-3 mt-4" />
       {/* List of events this month */}
-      <div className="flex flex-col gap-2 mt-2 overflow-y-scroll text-white max-h-[125px] rounded-b-xl custom-scrollbar">
+      <div className="flex flex-col gap-2 mt-2 overflow-y-scroll pr-1 text-white max-h-[125px] rounded-b-xl custom-scrollbar">
         {currentDate.getMonth() === today.getMonth() &&
           currentDate.getFullYear() === today.getFullYear() &&
           (todayEvents.length > 0 ? (
@@ -206,7 +206,10 @@ const MiniCalendar = () => {
               <span className="w-1.5 h-1.5 text-xl -mt-1 text-cyan-400 mr-3">
                 •
               </span>
-              Today - {todayEvents[0].summary}
+              <span>
+                {todayEvents[0].summary}{" "}
+                <span className="text-[10px] text-gray-200/50">- Today</span>
+              </span>
             </div>
           ) : (
             <div className="flex text-[12px]">

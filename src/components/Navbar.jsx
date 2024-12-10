@@ -9,6 +9,7 @@ const Navbar = () => {
     <div
       data-tauri-drag-region
       className="text-white flex items-center text-sm justify-between px-4 mr-10 absolute top-5 left-0 right-0"
+      style={{ userSelect: "none" }}
     >
       <div className="ml-[80px] flex items-center px-2 py-2 pr-4 rounded-full bg-gray-950/40 gap-2">
         <img
