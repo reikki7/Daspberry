@@ -7,7 +7,6 @@ import GoogleLogo from "../assets/g-logo.png";
 import { RefreshCw } from "lucide-react";
 import { ScaleLoader } from "react-spinners";
 import GoogleCalendarIcon from "../assets/google-calendar-logo.png";
-import { use } from "react";
 
 const CACHE_KEY = "cached_events";
 const LAST_FETCH_KEY = "last_fetch_timestamp";
@@ -137,8 +136,6 @@ const Events = () => {
         event.summary !== "Weekly Huddle" ||
         (closestWeeklyHuddle && event === closestWeeklyHuddle)
     );
-
-    console.log(filteredEvents);
 
     return filteredEvents.filter((event) => new Date(event.start) > now);
   }, [events]);

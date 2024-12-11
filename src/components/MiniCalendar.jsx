@@ -202,7 +202,7 @@ const MiniCalendar = () => {
         {currentDate.getMonth() === today.getMonth() &&
           currentDate.getFullYear() === today.getFullYear() &&
           (todayEvents.length > 0 ? (
-            <div className="flex text-[12px]">
+            <div className="flex text-[12px] mb-1.5">
               <span className="w-1.5 h-1.5 text-xl -mt-1 text-cyan-400 mr-3">
                 •
               </span>
@@ -212,7 +212,7 @@ const MiniCalendar = () => {
               </span>
             </div>
           ) : (
-            <div className="flex text-[12px]">
+            <div className="flex text-[12px] mb-1.5">
               <span className="w-1.5 text-xl -mt-1 h-1.5 text-cyan-400 mr-3">
                 •
               </span>

@@ -55,6 +55,29 @@ struct CalendarEvent {
     location: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct Task {
+    id: String,
+    title: String,
+    date: String,
+    description: String,
+    completed: bool,
+    completed_on: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct NewTask {
+    name: String,
+    notes: Option<String>,
+    due_on: Option<String>,
+    workspace: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct CreateTaskResponse {
+    data: Value,
+}
+
 fn get_google_client_id() -> String {
     std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID is not set")
 }
@@ -433,11 +456,45 @@ fn read_asana_user_details_cache() -> Result<String, String> {
   }
 }
 
+#[command]
+fn save_local_tasks(tasks: Vec<Task>) -> Result<(), String> {
+    let tasks_json = serde_json::to_string(&tasks)
+        .map_err(|e| format!("Failed to serialize tasks: {}", e))?;
+    
+    let cache_path = dirs::data_local_dir()
+        .ok_or_else(|| "Failed to get local data directory".to_string())?
+        .join("local_tasks_cache.json");
+    
+    fs::write(&cache_path, tasks_json)
+        .map_err(|e| format!("Failed to write tasks to file: {}", e))?;
+    
+    Ok(())
+}
+
+#[command]
+fn load_local_tasks() -> Result<Vec<Task>, String> {
+    let cache_path = dirs::data_local_dir()
+        .ok_or_else(|| "Failed to get local data directory".to_string())?
+        .join("local_tasks_cache.json");
+
+    if !cache_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let tasks_json = fs::read_to_string(&cache_path)
+        .map_err(|e| format!("Failed to read tasks file: {}", e))?;
+    
+    let tasks: Vec<Task> = serde_json::from_str(&tasks_json)
+        .map_err(|e| format!("Failed to deserialize tasks: {}", e))?;
+    
+    Ok(tasks)
+}
+
 fn main() {
     dotenv::dotenv().ok(); 
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache, cache_asana_tasks, read_asana_tasks_cache, cache_asana_user_details, read_asana_user_details_cache, get_google_auth_url, get_google_tokens, fetch_google_calendar_events, handle_oauth_callback])
+        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache, cache_asana_tasks, read_asana_tasks_cache, cache_asana_user_details, read_asana_user_details_cache, get_google_auth_url, get_google_tokens, fetch_google_calendar_events, handle_oauth_callback, save_local_tasks, load_local_tasks])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

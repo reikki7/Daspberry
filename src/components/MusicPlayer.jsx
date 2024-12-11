@@ -44,6 +44,8 @@ const MusicPlayer = () => {
   const currentTrackIndexRef = useRef(currentTrackIndex);
   const volumeSliderRef = useRef(null);
 
+  const isHome = location.pathname === "/";
+
   // Play a random track on initial load
   useEffect(() => {
     if (musicFiles.length > 0) {
@@ -118,7 +120,7 @@ const MusicPlayer = () => {
       const { currentSound, isLoopingSingle, currentTrackIndex } =
         playerStateRef.current;
 
-      if (!currentSound || musicMenu) return;
+      if (!currentSound || musicMenu || !isHome) return;
 
       // Prevent default behavior for Spacebar
       if (
@@ -219,7 +221,7 @@ const MusicPlayer = () => {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [musicMenu, isPlaying, currentSound]);
+  }, [musicMenu, isPlaying, currentSound, isHome]);
 
   // Load music files from the system
   const loadMusicFiles = async () => {
