@@ -408,11 +408,13 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                         })
                       : "No due date"}
                   </div>
-                  {new Date(task.date) < new Date() && task.date !== null && (
-                    <div className="bg-red-500/70 px-2 py-1 rounded-full text-xs flex items-center">
-                      Overdue
-                    </div>
-                  )}
+                  {new Date(task.date) <
+                    new Date(new Date().setHours(0, 0, 0, 0)) &&
+                    task.date !== null && (
+                      <div className="bg-red-500/70 px-2 py-1 rounded-full text-xs flex items-center">
+                        Overdue
+                      </div>
+                    )}
                 </div>
                 <hr className="my-3 border-t border-gray-300/40" />
               </div>
