@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   CalendarIcon,
   Check,
@@ -11,8 +17,10 @@ import {
 import { invoke } from "@tauri-apps/api/tauri";
 import ScaleLoader from "react-spinners/ScaleLoader";
 import AsanaLogo from "../assets/asana-logo.png";
+import AsanaLogoIcon from "../assets/asana-logo-icon.png";
 import CustomDropdown from "./CustomDropdown";
 import { Slide, ToastContainer, toast } from "react-toastify";
+import { formatDistanceToNow } from "date-fns";
 import "react-toastify/dist/ReactToastify.css";
 
 const AsanaTasks = ({ isTaskAvailable }) => {
@@ -48,13 +56,16 @@ const AsanaTasks = ({ isTaskAvailable }) => {
 
   const defaultAssignee = import.meta.env.VITE_ASANA_DEFAULT_ASSIGNEE;
 
-  const options = {
-    method: "GET",
-    headers: {
-      accept: "application/json",
-      authorization: `Bearer ${asanaApiKey}`,
-    },
-  };
+  const options = useMemo(
+    () => ({
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${asanaApiKey}`,
+      },
+    }),
+    [asanaApiKey]
+  );
 
   const handleContainerClick = () => {
     if (dateInputRef.current) {
@@ -341,118 +352,127 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     }
   };
 
-  const fetchTasks = async (strategy = "cache") => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchTaskDetails = useCallback(
+    async (taskGids) => {
+      try {
+        const detailedTasks = await Promise.all(
+          taskGids.map(async (taskGid) => {
+            const response = await fetch(
+              `https://app.asana.com/api/1.0/tasks/${taskGid}`,
+              options
+            );
 
-      await fetchUserDetails();
+            if (!response.ok) {
+              throw new Error(`Failed to fetch task ${taskGid}`);
+            }
 
-      let retrievedTasks = null;
-
-      if (strategy === "cache") {
-        // Try local storage first
-        retrievedTasks = getTasksFromLocalStorage();
-
-        // If not in local storage, try Tauri cache
-        if (!retrievedTasks) {
-          retrievedTasks = await fetchTasksFromTauriCache();
-        }
-      }
-
-      // If no cached data or forced network fetch, fetch from network
-      if (!retrievedTasks) {
-        const response = await fetch(
-          `https://app.asana.com/api/1.0/workspaces/${asanaWorkspaceGid}/tasks?assignee=me&completed_since=now`,
-          options
+            const taskData = await response.json();
+            return taskData.data;
+          })
         );
+        return detailedTasks;
+      } catch (err) {
+        console.error("Error fetching task details:", err);
+        throw err;
+      }
+    },
+    [options]
+  );
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch tasks");
+  const fetchTasks = useCallback(
+    async (strategy) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        await fetchUserDetails();
+
+        let retrievedTasks = null;
+
+        if (strategy === "cache") {
+          // Try local storage first
+          retrievedTasks = getTasksFromLocalStorage();
+
+          // If not in local storage, try Tauri cache
+          if (!retrievedTasks) {
+            retrievedTasks = await fetchTasksFromTauriCache();
+          }
         }
 
-        const data = await response.json();
-        const uncompletedTaskGids = data.data
-          .filter((task) => !task.completed)
-          .map((task) => task.gid);
-
-        retrievedTasks = await fetchTaskDetails(uncompletedTaskGids);
-      }
-
-      setTasks(retrievedTasks);
-      updateTasksCache(retrievedTasks);
-      saveTasksToLocalStorage(retrievedTasks);
-      await cacheTasksViaTauri(retrievedTasks);
-    } catch (err) {
-      console.error("Failed to fetch tasks:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTaskDetails = async (taskGids) => {
-    try {
-      const detailedTasks = await Promise.all(
-        taskGids.map(async (taskGid) => {
+        // If no cached data or forced network fetch, fetch from network
+        if (!retrievedTasks) {
           const response = await fetch(
-            `https://app.asana.com/api/1.0/tasks/${taskGid}`,
+            `https://app.asana.com/api/1.0/workspaces/${asanaWorkspaceGid}/tasks?assignee=me&completed_since=now`,
             options
           );
 
           if (!response.ok) {
-            throw new Error(`Failed to fetch task ${taskGid}`);
+            throw new Error("Failed to fetch tasks");
           }
 
-          const taskData = await response.json();
-          return taskData.data;
-        })
-      );
-      return detailedTasks;
-    } catch (err) {
-      console.error("Error fetching task details:", err);
-      throw err;
-    }
-  };
+          const data = await response.json();
+          const uncompletedTaskGids = data.data
+            .filter((task) => !task.completed)
+            .map((task) => task.gid);
+
+          retrievedTasks = await fetchTaskDetails(uncompletedTaskGids);
+        }
+
+        setTasks(retrievedTasks);
+        updateTasksCache(retrievedTasks);
+        saveTasksToLocalStorage(retrievedTasks);
+        await cacheTasksViaTauri(retrievedTasks);
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [options, fetchTaskDetails]
+  );
 
   // Fetch tasks on initial load
   useEffect(() => {
     fetchTasks(fetchStrategy);
-  }, [fetchStrategy]);
+  }, [fetchStrategy, fetchTasks]);
 
   // Update/Modify Task
-  const updateTask = async (taskGid, updates) => {
-    try {
-      const response = await fetch(
-        `https://app.asana.com/api/1.0/tasks/${taskGid}`,
-        {
-          method: "PUT",
-          headers: {
-            accept: "application/json",
-            "Content-Type": "application/json",
-            authorization: "Bearer " + import.meta.env.VITE_ASANA_API_KEY,
-          },
-          body: JSON.stringify({ data: updates }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update task");
-      }
-
-      const updatedTask = await response.json();
-      setTasks((prevTasks) => {
-        const updatedTasks = prevTasks.map((task) =>
-          task.gid === taskGid ? updatedTask.data : task
+  const updateTask = useCallback(
+    async (taskGid, updates) => {
+      try {
+        const response = await fetch(
+          `https://app.asana.com/api/1.0/tasks/${taskGid}`,
+          {
+            method: "PUT",
+            headers: {
+              accept: "application/json",
+              "Content-Type": "application/json",
+              authorization: "Bearer " + import.meta.env.VITE_ASANA_API_KEY,
+            },
+            body: JSON.stringify({ data: updates }),
+          }
         );
-        updateTasksCache(updatedTasks);
-        return updatedTasks;
-      });
-    } catch (err) {
-      console.error("Failed to update task:", err);
-      throw err;
-    }
-  };
+
+        if (!response.ok) {
+          throw new Error("Failed to update task");
+        }
+
+        const updatedTask = await response.json();
+        setTasks((prevTasks) => {
+          const updatedTasks = prevTasks.map((task) =>
+            task.gid === taskGid ? updatedTask.data : task
+          );
+          updateTasksCache(updatedTasks);
+          return updatedTasks;
+        });
+      } catch (err) {
+        console.error("Error updating task:", err);
+        throw err;
+      }
+    },
+    [setTasks, updateTasksCache]
+  );
 
   const handleTaskClick = (task) => {
     setSelectedTask(task);
@@ -493,14 +513,16 @@ const AsanaTasks = ({ isTaskAvailable }) => {
 
   const handleTaskDateChange = async (newDate) => {
     try {
-      const updatedTask = await updateTask(selectedTask.gid, {
-        due_on: newDate,
-      });
+      await updateTask(selectedTask.gid, { due_on: newDate });
 
-      // Update local state
+      // Update local state without replacing selectedTask
       setTaskDueDate(newDate);
-      setSelectedTask(updatedTask);
-      setTasks(tasks.map((t) => (t.gid === updatedTask.gid ? updatedTask : t)));
+      setSelectedTask((prevTask) => ({ ...prevTask, due_on: newDate }));
+      setTasks((prevTasks) =>
+        prevTasks.map((t) =>
+          t.gid === selectedTask.gid ? { ...t, due_on: newDate } : t
+        )
+      );
     } catch (err) {
       console.error("Failed to update task date:", err);
     }
@@ -609,16 +631,24 @@ const AsanaTasks = ({ isTaskAvailable }) => {
                   })()}
                 </div>
               </div>
-
               <div className="text-[13px] text-white/70 flex items-center mb-3">
                 <CalendarIcon className="w-4 h-4 mr-2 -mt-0.5 text-white/50" />
-                {task.due_on
-                  ? new Date(task.due_on).toLocaleDateString("en-US", {
+                {task.due_on ? (
+                  <>
+                    {new Date(task.due_on).toLocaleDateString("en-US", {
                       day: "2-digit",
                       month: "long",
                       year: "numeric",
-                    })
-                  : "No due date"}
+                    })}
+                    {" — ("}
+                    {formatDistanceToNow(new Date(task.due_on), {
+                      addSuffix: true,
+                    })}
+                    {")"}
+                  </>
+                ) : (
+                  "No due date"
+                )}
               </div>
               <div className="text-sm text-white/70 mt-2 line-clamp-3 whitespace-pre-wrap">
                 {replaceProfileLinks(task.notes)}
@@ -640,7 +670,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
       {/* Selected Task Modal */}
       {selectedTask && (
         <div className="fixed rounded-3xl inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 px-4 py-8">
-          <div className="bg-gray-950/60 rounded-lg max-w-4xl w-full max-h-full flex flex-col">
+          <div className="bg-gray-950/60 overflow-hidden rounded-lg max-w-4xl w-full max-h-full flex flex-col">
             <div
               data-tauri-drag-region
               className="p-4 text-white relative flex justify-between items-center"
@@ -649,6 +679,11 @@ const AsanaTasks = ({ isTaskAvailable }) => {
                   "linear-gradient(to right, rgb(248, 103, 240, 0.2), rgba(0, 128, 255, 0.2), rgba(0, 255, 255, 0.2))",
               }}
             >
+              <img
+                src={AsanaLogoIcon}
+                alt="Asana Logo"
+                className="w-8 mr-4 h-auto"
+              />
               {/* Editable Title */}
               <input
                 type="text"
@@ -659,7 +694,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
                     name: e.target.value,
                   })
                 }
-                className="text-white text-xl font-bold bg-transparent focus:outline-none"
+                className="text-white text-xl mr-1 truncate font-bold bg-transparent focus:outline-none"
                 placeholder="Enter task title"
                 onKeyDown={(e) => e.stopPropagation()}
                 onBlur={async () => {
@@ -742,7 +777,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
                       ref={dateInputRef}
                       className="text-white bg-transparent border-none focus:outline-none cursor-pointer"
                       value={taskDueDate || ""}
-                      onChange={(e) => setTaskDueDate(e.target.value)}
+                      onChange={(e) => handleTaskDateChange(e.target.value)}
                       style={{ visibility: "hidden", position: "absolute" }}
                     />
                     <span className="text-white" style={{ userSelect: "none" }}>
@@ -903,6 +938,11 @@ const AsanaTasks = ({ isTaskAvailable }) => {
                   "linear-gradient(to right, rgb(248, 103, 240, 0.2), rgba(0, 128, 255, 0.2), rgba(0, 255, 255, 0.2))",
               }}
             >
+              <img
+                src={AsanaLogoIcon}
+                alt="Asana Logo"
+                className="w-8 mr-4 h-auto"
+              />
               {/* Editable Title */}
               <input
                 type="text"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { invoke } from "@tauri-apps/api/tauri";
 import { FaCopy } from "react-icons/fa";
@@ -15,11 +15,14 @@ import {
   ChevronRight,
   ChevronLeft,
   ClipboardPenLine,
+  ClipboardCheck,
+  ClipboardPen,
 } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { nightOwl } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import { CopyToClipboard } from "react-copy-to-clipboard";
+import { formatDistanceToNow } from "date-fns";
 import "react-toastify/dist/ReactToastify.css";
 
 const LocalTasks = ({ setIsTaskAvailable }) => {
@@ -338,6 +341,13 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     }
   }, [tasks, setIsTaskAvailable]);
 
+  const handleTitleChange = useCallback((e) => {
+    setSelectedTask((prevTask) => ({
+      ...prevTask,
+      title: e.target.value,
+    }));
+  }, []);
+
   return (
     <div className="w-full">
       <div className="flex justify-between mb-2 items-center">
@@ -452,7 +462,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       {/* Task Modal */}
       {selectedTask && (
         <div className="fixed rounded-3xl inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 px-4 py-8">
-          <div className="bg-gray-950/60 rounded-lg max-w-4xl w-full max-h-full flex flex-col">
+          <div className="bg-gray-950/60 overflow-hidden rounded-lg max-w-4xl w-full max-h-full flex flex-col">
             <div
               data-tauri-drag-region
               className="p-4 text-white relative flex justify-between items-center"
@@ -461,16 +471,12 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                   "linear-gradient(to right, rgb(248, 103, 240, 0.2), rgba(0, 128, 255, 0.2), rgba(0, 255, 255, 0.2))",
               }}
             >
+              <ClipboardPenLine className="w-8 h-auto mr-3" />
               {/* Editable Title */}
               <input
                 type="text"
                 value={selectedTask.title}
-                onChange={(e) =>
-                  setSelectedTask({
-                    ...selectedTask,
-                    title: e.target.value,
-                  })
-                }
+                onChange={handleTitleChange}
                 onBlur={handleUpdateTask}
                 className="text-white text-xl font-bold bg-transparent focus:outline-none"
                 placeholder="Enter task title"
@@ -639,21 +645,24 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                   "linear-gradient(to right, rgb(248, 103, 240, 0.2), rgba(0, 128, 255, 0.2), rgba(0, 255, 255, 0.2))",
               }}
             >
-              {/* Editable Title */}
-              <input
-                type="text"
-                value={newTask.title}
-                onChange={(e) =>
-                  setNewTask({
-                    ...newTask,
-                    title: e.target.value,
-                  })
-                }
-                className="text-white text-xl font-bold bg-transparent focus:outline-none"
-                placeholder="Enter task title"
-                onKeyDown={(e) => e.stopPropagation()}
-                style={{ width: "100%" }}
-              />
+              <div className="flex items-center">
+                <ClipboardPen className="w-8 h-auto mr-3" />
+                {/* Editable Title */}
+                <input
+                  type="text"
+                  value={newTask.title}
+                  onChange={(e) =>
+                    setNewTask({
+                      ...newTask,
+                      title: e.target.value,
+                    })
+                  }
+                  className="text-white text-xl font-bold bg-transparent focus:outline-none"
+                  placeholder="Enter task title"
+                  onKeyDown={(e) => e.stopPropagation()}
+                  style={{ width: "100%" }}
+                />
+              </div>
 
               <button
                 className="text-center p-2 duration-100 rounded-full text-white text-2xl font-bold hover:text-gray-300 focus:outline-none"
@@ -749,7 +758,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       {/* Completed Tasks Modal */}
       {completedTasksModalOpen && (
         <div className="fixed rounded-3xl inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 px-4 py-8">
-          <div className="bg-gray-950/60 rounded-lg max-w-4xl w-full max-h-full flex flex-col">
+          <div className="bg-gray-950/60 overflow-hidden rounded-lg max-w-4xl w-full max-h-full flex flex-col">
             <div
               data-tauri-drag-region
               className="p-4 text-white relative flex justify-between items-center"
@@ -758,7 +767,10 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                   "linear-gradient(to right, rgb(248, 103, 240, 0.2), rgba(0, 128, 255, 0.2), rgba(0, 255, 255, 0.2)",
               }}
             >
-              <h2 className="text-xl font-semibold">Completed Tasks</h2>
+              <div className="flex items-center gap-1">
+                <ClipboardCheck className="w-8 h-auto mr-2" />
+                <h2 className="text-xl font-semibold">Completed Tasks</h2>
+              </div>
               <button
                 className="text-center p-2 duration-100 rounded-full text-white text-2xl font-bold hover:text-gray-300 focus:outline-none"
                 onClick={() => setCompletedTasksModalOpen(false)}
@@ -816,8 +828,9 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                       {/* Completed On Date */}
                       <div className="text-[13px] text-white/70 flex items-center mb-3">
                         <CalendarCheck className="w-4 h-4 mr-2 -mt-0.5 text-white/50" />
-                        {task.completed_on
-                          ? new Date(task.completed_on).toLocaleDateString(
+                        {task.completed_on ? (
+                          <>
+                            {new Date(task.completed_on).toLocaleDateString(
                               "en-US",
                               {
                                 hour: "2-digit",
@@ -826,8 +839,16 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                                 month: "long",
                                 year: "numeric",
                               }
-                            )
-                          : "No completion date"}
+                            )}
+                            {" — ("}
+                            {formatDistanceToNow(new Date(task.completed_on), {
+                              addSuffix: true,
+                            })}
+                            {")"}
+                          </>
+                        ) : (
+                          "No completion date"
+                        )}
                       </div>
 
                       <hr className="border-t border-gray-600 my-4" />
