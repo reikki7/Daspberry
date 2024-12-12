@@ -97,7 +97,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       date: newTask.date || new Date().toISOString().split("T")[0],
       description: newTask.description,
       completed: false,
-      completedOn: null,
+      completed_on: null,
     };
     const updatedTasks = [...tasks, newTaskEntry];
     setTasks(updatedTasks);
@@ -265,12 +265,12 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   };
 
   const handleTaskComplete = (taskId, isComplete) => {
-    const completedOn = isComplete ? new Date().toISOString() : null;
+    const completed_on = isComplete ? new Date().toISOString() : null;
 
     // Update the task in the tasks array
     const updatedTasks = tasks.map((task) =>
       task.id === taskId
-        ? { ...task, completed: isComplete, completedOn: completedOn }
+        ? { ...task, completed: isComplete, completed_on: completed_on }
         : task
     );
 
@@ -284,7 +284,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       setSelectedTask({
         ...selectedTask,
         completed: isComplete,
-        completedOn: completedOn,
+        completed_on: completed_on,
       });
       setTaskIsComplete(isComplete);
       deleteOldestCompletedTasks(tasks);
