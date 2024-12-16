@@ -83,12 +83,10 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       dateInputRef.current.click();
     }
   };
-
   const showNotification = (message, type = "error") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 2500);
   };
-
   const handleAddTask = () => {
     if (!newTask.title.trim()) {
       showNotification("Task title cannot be empty.", "error");
@@ -97,7 +95,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     const newTaskEntry = {
       id: uuidv4(),
       title: newTask.title,
-      date: newTask.date || new Date().toISOString().split("T")[0],
+      date: newTask.date || "",
       description: newTask.description,
       completed: false,
       completed_on: null,
@@ -381,50 +379,53 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
             No TODO found. Click "Add TODO" to create a new task.
           </div>
         )}
-
         <div
-          className={`gap-4 w-[237.7px] text-wrap flex flex-row ${
+          className={` flex justify-between w-full ${
             tasks.filter((task) => !task.completed).length > 0 ? "h-72" : ""
           }`}
         >
-          {currentTasks.map((task) => (
-            <button
-              key={task.id}
-              className="relative bg-gradient-to-br border hover:backdrop-blur-md bg-gray-950/30 backdrop-blur-lg text-left rounded-lg p-2 hover:bg-[#c08feb]/20 shadow-lg hover:shadow-xl transition-all border-none outline-none w-full flex-shrink-0"
-              onClick={() => handleTaskClick(task)}
-            >
-              {/* Header Section */}
-              <div className="mx-2 mt-1">
-                <h3 className="text-white text-wrap line-clamp-3 truncate">
-                  {task.title}
-                </h3>
-                <div className="flex mt-3 justify-between">
-                  <div className="text-[13px] text-white/70 flex items-center">
-                    <CalendarIcon className="w-4 h-4 mr-2 -mt-0.5 text-white/50" />
-                    {task.date
-                      ? new Date(task.date).toLocaleDateString("en-ID", {
-                          day: "2-digit",
-                          month: "long",
-                        })
-                      : "No due date"}
-                  </div>
-                  {new Date(task.date) <
-                    new Date(new Date().setHours(0, 0, 0, 0)) &&
-                    task.date !== null && (
-                      <div className="bg-red-500/70 px-2 py-1 rounded-full text-xs flex items-center">
-                        Overdue
+          <div className="">
+            <div className="flex h-full gap-4">
+              {currentTasks.map((task) => (
+                <button
+                  key={task.id}
+                  className="relative w-[239px] bg-gradient-to-br border hover:backdrop-blur-md bg-gray-950/30 backdrop-blur-lg p-2 text-left rounded-lg hover:bg-[#c08feb]/20 shadow-lg hover:shadow-xl transition-all border-none outline-none"
+                  onClick={() => handleTaskClick(task)}
+                >
+                  {/* Header Section */}
+                  <div className="mx-2 mt-1">
+                    <h3 className="text-white text-wrap line-clamp-3 truncate">
+                      {task.title}
+                    </h3>
+                    <div className="flex mt-3 justify-between">
+                      <div className="text-[13px] text-white/70 flex items-center">
+                        <CalendarIcon className="w-4 h-4 mr-2 -mt-0.5 text-white/50" />
+                        {task.date
+                          ? new Date(task.date).toLocaleDateString("en-ID", {
+                              day: "2-digit",
+                              month: "long",
+                            })
+                          : "No due date"}
                       </div>
-                    )}
-                </div>
-                <hr className="my-3 border-t border-gray-300/40" />
-              </div>
+                      {new Date(task.date) <
+                        new Date(new Date().setHours(0, 0, 0, 0)) &&
+                        task.date !== null && (
+                          <div className="bg-red-500/70 px-2 py-1 rounded-full text-xs flex items-center">
+                            Overdue
+                          </div>
+                        )}
+                    </div>
+                    <hr className="my-3 border-t border-gray-300/40" />
+                  </div>
 
-              {/* Task Description */}
-              <div className="h-full mx-2 overflow-y-auto text-sm text-white/70 text-wrap whitespace-pre-wrap max-h-[170px]">
-                {processTaskDescription(task.description)}
-              </div>
-            </button>
-          ))}
+                  {/* Task Description */}
+                  <div className="h-full mx-2 overflow-y-auto text-sm text-white/70 text-wrap whitespace-pre-wrap max-h-[170px]">
+                    {processTaskDescription(task.description)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Only show up if there are more than 5 incomplete tasks */}
@@ -647,7 +648,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                   "linear-gradient(to right, rgb(248, 103, 240, 0.2), rgba(0, 128, 255, 0.2), rgba(0, 255, 255, 0.2))",
               }}
             >
-              <div className="flex items-center">
+              <div className="flex w-full items-center mr-2">
                 <ClipboardPen className="w-8 h-auto mr-3" />
                 {/* Editable Title */}
                 <input
@@ -659,7 +660,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
                       title: e.target.value,
                     })
                   }
-                  className="text-white text-xl font-bold bg-transparent focus:outline-none"
+                  className="text-white text-xl w-full border-b font-bold bg-transparent focus:outline-none"
                   placeholder="Enter task title"
                   onKeyDown={(e) => e.stopPropagation()}
                   style={{ width: "100%" }}

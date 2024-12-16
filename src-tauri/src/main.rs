@@ -73,6 +73,17 @@ struct NewTask {
     workspace: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct Event {
+    id: String,
+    title: String,
+    description: Option<String>,
+    date_start: Option<String>,
+    date_end: Option<String>,
+    time: Option<String>,
+    location: Option<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 struct CreateTaskResponse {
     data: Value,
@@ -490,11 +501,60 @@ fn load_local_tasks() -> Result<Vec<Task>, String> {
     Ok(tasks)
 }
 
+#[command]
+fn save_local_events(events: Vec<Event>) -> Result<(), String> {
+    let events_json = serde_json::to_string(&events)
+        .map_err(|e| format!("Failed to serialize events: {}", e))?;
+
+    let cache_path = dirs::data_local_dir()
+        .ok_or_else(|| "Failed to get local data directory".to_string())?
+        .join("local_events_cache.json");
+
+    fs::write(&cache_path, events_json)
+        .map_err(|e| format!("Failed to write events to file: {}", e))?;
+
+    Ok(())
+}
+
+#[command]
+fn load_local_events() -> Result<Vec<Event>, String> {
+    let cache_path = dirs::data_local_dir()
+        .ok_or_else(|| "Failed to get local data directory".to_string())?
+        .join("local_events_cache.json");
+
+    if !cache_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let events_json = fs::read_to_string(&cache_path)
+        .map_err(|e| format!("Failed to read events file: {}", e))?;
+
+    let events: Vec<Event> = serde_json::from_str(&events_json)
+        .map_err(|e| format!("Failed to deserialize events: {}", e))?;
+
+    Ok(events)
+}
+
+#[command]
+fn clear_local_events() -> Result<(), String> {
+    let cache_path = dirs::data_local_dir()
+        .ok_or_else(|| "Failed to get local data directory".to_string())?
+        .join("local_events_cache.json");
+
+    if cache_path.exists() {
+        fs::remove_file(&cache_path).map_err(|e| format!("Failed to remove events file: {}", e))?;
+        Ok(())
+    } else {
+        Err("Events file does not exist".to_string())
+    }
+}
+
+
 fn main() {
     dotenv::dotenv().ok(); 
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache, cache_asana_tasks, read_asana_tasks_cache, cache_asana_user_details, read_asana_user_details_cache, get_google_auth_url, get_google_tokens, fetch_google_calendar_events, handle_oauth_callback, save_local_tasks, load_local_tasks])
+        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache, cache_asana_tasks, read_asana_tasks_cache, cache_asana_user_details, read_asana_user_details_cache, get_google_auth_url, get_google_tokens, fetch_google_calendar_events, handle_oauth_callback, save_local_tasks, load_local_tasks, save_local_events, load_local_events, clear_local_events])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
