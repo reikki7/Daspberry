@@ -187,7 +187,10 @@ const MiniCalendar = () => {
   return (
     <div>
       {/* Header */}
-      <div className="flex justify-between items-center mb-2">
+      <div
+        className="flex justify-between items-center mb-2"
+        style={{ userSelect: "none" }}
+      >
         <div className="flex flex-col">
           <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-200 to-white bg-clip-text text-transparent">
             {monthNames[currentDate.getMonth()]}
@@ -216,7 +219,7 @@ const MiniCalendar = () => {
       {/* Calendar Grid */}
       <div className="h-52">
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 mb-2">
+        <div className="grid grid-cols-7 mb-2" style={{ userSelect: "none" }}>
           {weekDays.map((day, index) => (
             <div
               key={`${day}-${index}`}
@@ -229,63 +232,61 @@ const MiniCalendar = () => {
         {/* Days grid */}
         <div className="grid grid-cols-7 gap-1">
           {days.map((day, index) => {
+            const dayEvents = getEventsForDay(day);
+            const isCurrentDay = isToday(day);
+
             return (
               <div
                 key={index}
+                onMouseEnter={(event) => {
+                  if (dayEvents.length > 0)
+                    handleMouseEnter(event, dayEvents[0]);
+                }}
+                onMouseLeave={handleMouseLeave}
                 className={` 
-          aspect-square flex items-center justify-center rounded-lg text-sm
-          transition-all duration-300 relative
-          ${
-            day === null
-              ? ""
-              : isToday(day)
-              ? "bg-[#05f7ff] hover:bg-opacity-80 text-cyan-400 font-bold"
-              : "bg-white/5 text-white/80 hover:bg-white/10 hover:text-cyan-400"
-          }
-          ${day === null ? "" : "cursor-pointer"}
-        `}
+        aspect-square flex items-center justify-center rounded-lg text-sm
+        transition-all duration-300 relative
+        ${
+          day === null
+            ? ""
+            : isCurrentDay
+            ? "bg-[#05f7ff] text-cyan-400 font-bold"
+            : "bg-white/5 text-white/80 hover:bg-white/10 hover:text-cyan-400"
+        }
+        ${day === null ? "" : "cursor-pointer"}
+      `}
               >
-                {day &&
-                  (() => {
-                    const dayEvents = getEventsForDay(day); // Compute once
+                {day && dayEvents.length > 0 && !isCurrentDay && (
+                  <div className="absolute inset-0 flex justify-center items-center">
+                    {dayEvents.map((item, itemIndex) => {
+                      const itemColor =
+                        item.summary === "Weekly Huddle"
+                          ? "bg-[#ff02e5] hover:bg-opacity-80 duration-300"
+                          : item.type === "task"
+                          ? "bg-[#4179f0] hover:bg-opacity-80 duration-300"
+                          : item.type === "asana_task"
+                          ? "bg-[#fb4261] hover:bg-opacity-80 duration-300"
+                          : item.type === "local_event" && item.end
+                          ? "bg-[#871fff] hover:bg-opacity-80 duration-300"
+                          : "bg-[#b9a8ee] hover:bg-opacity-80 duration-300";
 
-                    return (
-                      dayEvents.length > 0 && (
-                        <div className="absolute inset-0 flex justify-center items-center">
-                          {dayEvents.map((item, itemIndex) => {
-                            const itemColor =
-                              item.summary === "Weekly Huddle"
-                                ? "bg-[#ff02e5] hover:bg-opacity-80 duration-300" // Weekly Huddle
-                                : item.type === "task"
-                                ? "bg-[#4179f0] hover:bg-opacity-80 duration-300" // Regular tasks
-                                : item.type === "asana_task"
-                                ? "bg-[#fb4261] hover:bg-opacity-80 duration-300" // Asana tasks
-                                : item.type === "local_event" && item.end
-                                ? "bg-[#871fff] hover:bg-opacity-80 duration-300" // Multi-day events
-                                : item.type === "local_event"
-                                ? "bg-[#b9a8ee] hover:bg-opacity-80 duration-300" // Single-day events
-                                : "bg-[#faff08] hover:bg-opacity-80 duration-300"; // Other events
-
-                            return (
-                              <span
-                                key={itemIndex}
-                                onMouseEnter={(event) =>
-                                  handleMouseEnter(event, item)
-                                }
-                                onMouseLeave={handleMouseLeave}
-                                className={`rounded-lg ${itemColor} ${
-                                  !isToday(day) ? "w-full h-full" : ""
-                                }`}
-                              ></span>
-                            );
-                          })}
-                        </div>
-                      )
-                    );
-                  })()}
+                      return (
+                        <span
+                          key={itemIndex}
+                          onMouseEnter={(event) =>
+                            handleMouseEnter(event, item)
+                          }
+                          onMouseLeave={handleMouseLeave}
+                          className={`w-full h-full rounded-lg ${itemColor}`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
+
           {hoveredEvent && (
             <div
               style={{
@@ -358,7 +359,10 @@ const MiniCalendar = () => {
                     </span>
                     <span>
                       {item.summary}{" "}
-                      <span className="text-[10px] text-gray-200/50 whitespace-nowrap">
+                      <span
+                        className="text-[10px] text-gray-200/50 whitespace-nowrap"
+                        style={{ userSelect: "none" }}
+                      >
                         — Today
                       </span>
                     </span>
@@ -366,10 +370,27 @@ const MiniCalendar = () => {
                 ))
               ) : (
                 <div className="flex text-[12px] mb-1.5">
-                  <span className="w-1.5 text-xl -mt-1 h-1.5 text-cyan-400 mr-3">
+                  <span
+                    className="w-1.5 text-xl -mt-1 h-1.5 text-cyan-400 mr-3"
+                    style={{ userSelect: "none" }}
+                  >
                     •
                   </span>
-                  Today
+                  <span>
+                    Today
+                    {/* Show the date */}
+                    <span
+                      className="text-[10px] text-gray-200/50 whitespace-nowrap"
+                      style={{ userSelect: "none" }}
+                    >
+                      &nbsp;—{" "}
+                      {today.toLocaleDateString("en-US", {
+                        timeZone: "Asia/Jakarta",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </span>
                 </div>
               )}
             </>
@@ -426,7 +447,10 @@ const MiniCalendar = () => {
               </span>
               <span className="text-white/80 text-xs">
                 {item.summary}{" "}
-                <span className="text-[10px] text-gray-200/50 whitespace-nowrap">
+                <span
+                  className="text-[10px] text-gray-200/50 whitespace-nowrap"
+                  style={{ userSelect: "none" }}
+                >
                   &nbsp;—{" "}
                   {new Date(item.start).toLocaleDateString("en-US", {
                     timeZone: "Asia/Jakarta",
