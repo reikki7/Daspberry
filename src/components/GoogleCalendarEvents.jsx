@@ -37,6 +37,7 @@ const GoogleCalendarEvents = () => {
 
   const getAuthUrl = async () => {
     const url = await invoke("get_google_auth_url");
+    console.log("Auth URL:", url);
 
     const authWindow = new WebviewWindow("auth", {
       title: "Google Authentication",

@@ -84,7 +84,13 @@ const AsanaTasks = ({ isTaskAvailable }) => {
 
   const saveTasksToLocalStorage = (tasks) => {
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(tasks));
+      // Implement debouncing for storage operations
+      const debouncedSave = useCallback(
+        debounce((data) => {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        }, 1000),
+        []
+      );
       localStorage.setItem(
         CACHE_EXPIRY_KEY,
         (Date.now() + CACHE_DURATION).toString()

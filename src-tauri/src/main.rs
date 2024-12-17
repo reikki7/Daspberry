@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use std::env;
 
-const REDIRECT_URI: &str = "http://localhost:1";
+const REDIRECT_URI: &str = "urn:ietf:wg:oauth:2.0:oob";
 
 #[derive(serde::Serialize)]
 struct Folder {
@@ -90,8 +90,11 @@ struct CreateTaskResponse {
 }
 
 fn get_google_client_id() -> String {
-    std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID is not set")
+    let client_id = std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID is not set");
+    println!("Using Google Client ID: {}", client_id);
+    client_id
 }
+
 
 fn get_google_client_secret() -> String {
     std::env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET is not set")
@@ -101,8 +104,9 @@ fn get_google_client_secret() -> String {
 #[command]
 fn get_google_auth_url() -> String {
     format!(
-        "https://accounts.google.com/o/oauth2/auth?client_id={}&redirect_uri={}&response_type=code&scope=https://www.googleapis.com/auth/calendar.events",
-        get_google_client_id(), REDIRECT_URI
+        "https://accounts.google.com/o/oauth2/auth?client_id={}&redirect_uri={}&response_type=code&scope=https://www.googleapis.com/auth/calendar.events&access_type=offline",
+        get_google_client_id(),
+        REDIRECT_URI
     )
 }
 

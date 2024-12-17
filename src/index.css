@@ -179,7 +179,7 @@ input[type="date"]::-moz-calendar-picker-indicator {
 }
 
 .tilt-card:hover {
-  box-shadow: 0 20px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .gradient-overlay {
@@ -189,4 +189,93 @@ input[type="date"]::-moz-calendar-picker-indicator {
 }
 .gradient-overlay:hover {
   background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+}
+
+@keyframes subtle-hover-glow {
+  0% {
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@keyframes subtle-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes subtle-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.01);
+  }
+}
+
+@keyframes grid-pulse {
+  0%,
+  100% {
+    opacity: 0.05;
+  }
+  50% {
+    opacity: 0.1;
+  }
+}
+
+@keyframes holographic-shift {
+  0%,
+  100% {
+    filter: hue-rotate(0deg) contrast(120%) brightness(80%);
+  }
+  50% {
+    filter: hue-rotate(20deg) contrast(130%) brightness(85%);
+  }
+}
+
+/* Apply to event cards */
+.event-card {
+  transition: all 0.3s ease;
+  animation: subtle-hover-glow 4s infinite, subtle-float 3s ease-in-out infinite;
+}
+
+.event-card:hover {
+  animation: subtle-pulse 0.5s ease-in-out, subtle-hover-glow 2s infinite;
+}
+
+.event-card-grid-overlay {
+  animation: grid-pulse 3s infinite;
+}
+
+.event-card-holographic {
+  animation: holographic-shift 5s infinite alternate;
+}
+
+/* Specific subtle animations for different elements */
+.date-card {
+  animation: subtle-hover-glow 4s infinite;
+}
+
+.title-gradient {
+  animation: text-shimmer 3s infinite, subtle-float 4s ease-in-out infinite;
+}
+
+@keyframes text-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
