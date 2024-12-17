@@ -84,15 +84,19 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       dateInputRef.current.click();
     }
   };
+
   const showNotification = (message, type = "error") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 2500);
   };
-  const handleAddTask = () => {
+
+  const handleAddTask = async () => {
     if (!newTask.title.trim()) {
       showNotification("Task title cannot be empty.", "error");
       return;
     }
+    setNewTaskModalOpen(false);
+
     const newTaskEntry = {
       id: uuidv4(),
       title: newTask.title,
@@ -101,12 +105,19 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       completed: false,
       completed_on: null,
     };
+
     const updatedTasks = [...tasks, newTaskEntry];
     setTasks(updatedTasks);
-    eventBus.emit("events_updated");
+
+    try {
+      await invoke("save_local_tasks", { tasks: updatedTasks });
+      eventBus.emit("events_updated");
+      console.log("Tasks saved successfully. Event emitted.");
+    } catch (error) {
+      console.error("Error saving tasks:", error);
+    }
+
     setNewTask({ title: "", date: "", description: "" });
-    setNewTaskModalOpen(false);
-    showNotification("Task added successfully!", "success");
   };
 
   const processTaskDescription = (notes) => {

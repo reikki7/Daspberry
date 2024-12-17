@@ -5,6 +5,8 @@ import MusicPlayer from "../components/MusicPlayer";
 import ProjectWheel from "../components/ProjectWheel";
 import UpcomingThings from "../components/UpcomingThings";
 
+import eventBus from "../utils/eventBus";
+
 const Clock = () => {
   const [time, setTime] = useState(new Date());
   const [weather, setWeather] = useState({});
@@ -82,6 +84,18 @@ const Clock = () => {
 
 const Home = () => {
   const [isHovered, setIsHovered] = useState(false);
+  const [calendarKey, setCalendarKey] = useState(0);
+
+  useEffect(() => {
+    const handleCalendarUpdate = () => {
+      console.log("Forcing MiniCalendar reload...");
+      setCalendarKey((prev) => prev + 1); // Increment key to force re-mount
+    };
+
+    eventBus.on("events_updated", handleCalendarUpdate);
+
+    return () => eventBus.off("events_updated", handleCalendarUpdate);
+  }, []);
 
   return (
     <div className="flex flex-col gap-1 h-[864px]">
@@ -143,7 +157,7 @@ const Home = () => {
 
         <div className="w-96 flex flex-col gap-1.5">
           <div className="flex-grow max-h-[72%] min-h-[72%] rounded-3xl bg-gray-950/40 p-6">
-            <MiniCalendar />
+            <MiniCalendar key={calendarKey} />
           </div>
           <div
             className="relative flex-grow -left-[222px] rounded-r-3xl bg-gray-950/40 z-10"
