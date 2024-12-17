@@ -1,59 +1,86 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { invoke } from "@tauri-apps/api/tauri";
+import eventBus from "../utils/eventBus";
 
 const MiniCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState([]);
+  const [hoveredEvent, setHoveredEvent] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+  const handleMouseEnter = (event, item) => {
+    const rect = event.target.getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.left + window.scrollX + 10,
+      y: rect.top + window.scrollY - 50,
+    });
+    setHoveredEvent(item);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredEvent(null);
+  };
+
+  const loadCachedData = async () => {
+    const cachedEvents =
+      JSON.parse(localStorage.getItem("cached_events")) || [];
+    const loadedTasks = await invoke("load_local_tasks");
+    let loadedAsanaTasks = await invoke("read_asana_tasks_cache");
+    const loadedLocalEvents = await invoke("load_local_events");
+
+    // Parse Asana tasks if needed
+    try {
+      loadedAsanaTasks = JSON.parse(loadedAsanaTasks);
+    } catch (error) {
+      console.error("Failed to parse Asana tasks:", error);
+      loadedAsanaTasks = [];
+    }
+
+    const asanaTasksFormatted = Array.isArray(loadedAsanaTasks)
+      ? loadedAsanaTasks.map((task) => ({
+          summary: task.name,
+          start: task.due_on,
+          type: "asana_task",
+        }))
+      : [];
+
+    const tasksFormatted =
+      loadedTasks?.map((task) => ({
+        summary: task.title,
+        start: task.date,
+        type: "task",
+      })) || [];
+
+    const eventsFormatted =
+      loadedLocalEvents?.map((event) => ({
+        summary: event.title,
+        start: event.date_start,
+        end: event.date_end,
+        type: "local_event",
+      })) || [];
+
+    setEvents([
+      ...cachedEvents,
+      ...tasksFormatted,
+      ...asanaTasksFormatted,
+      ...eventsFormatted,
+    ]);
+  };
 
   useEffect(() => {
-    const loadCachedData = async () => {
-      const cachedEvents =
-        JSON.parse(localStorage.getItem("cached_events")) || [];
-      const loadedTasks = await invoke("load_local_tasks");
-      let loadedAsanaTasks = await invoke("read_asana_tasks_cache");
-      const loadedLocalEvents = await invoke("load_local_events");
+    loadCachedData(); // Load data initially
 
-      // Parse Asana tasks if needed
-      try {
-        loadedAsanaTasks = JSON.parse(loadedAsanaTasks);
-      } catch (error) {
-        console.error("Failed to parse Asana tasks:", error);
-        loadedAsanaTasks = [];
-      }
-
-      const asanaTasksFormatted = Array.isArray(loadedAsanaTasks)
-        ? loadedAsanaTasks.map((task) => ({
-            summary: task.name,
-            start: task.due_on,
-            type: "asana_task",
-          }))
-        : [];
-
-      const tasksFormatted =
-        loadedTasks?.map((task) => ({
-          summary: task.title,
-          start: task.date,
-          type: "task",
-        })) || [];
-
-      const eventsFormatted =
-        loadedLocalEvents?.map((event) => ({
-          summary: event.title,
-          start: event.date_start,
-          end: event.date_end,
-          type: "local_event",
-        })) || [];
-
-      setEvents([
-        ...cachedEvents,
-        ...tasksFormatted,
-        ...asanaTasksFormatted,
-        ...eventsFormatted,
-      ]);
+    const handleUpdate = () => {
+      console.log("EventBus received 'events_updated', reloading data...");
+      loadCachedData();
     };
 
-    loadCachedData();
+    // Listen for updates
+    eventBus.on("events_updated", handleUpdate);
+
+    // Cleanup on unmount
+    return () => eventBus.off("events_updated", handleUpdate);
   }, []);
 
   // Get days in the current month
@@ -228,20 +255,24 @@ const MiniCalendar = () => {
                           {dayEvents.map((item, itemIndex) => {
                             const itemColor =
                               item.summary === "Weekly Huddle"
-                                ? "bg-[#ff02e5]" // Weekly Huddle
+                                ? "bg-[#ff02e5] hover:bg-opacity-80 duration-300" // Weekly Huddle
                                 : item.type === "task"
-                                ? "bg-[#4179f0]" // Regular tasks
+                                ? "bg-[#4179f0] hover:bg-opacity-80 duration-300" // Regular tasks
                                 : item.type === "asana_task"
-                                ? "bg-[#fb4261]" // Asana tasks
+                                ? "bg-[#fb4261] hover:bg-opacity-80 duration-300" // Asana tasks
                                 : item.type === "local_event" && item.end
-                                ? "bg-[#871fff]" // Multi-day events
+                                ? "bg-[#871fff] hover:bg-opacity-80 duration-300" // Multi-day events
                                 : item.type === "local_event"
-                                ? "bg-[#b9a8ee]" // Single-day events
-                                : "bg-[#faff08]"; // Other events
+                                ? "bg-[#b9a8ee] hover:bg-opacity-80 duration-300" // Single-day events
+                                : "bg-[#faff08] hover:bg-opacity-80 duration-300"; // Other events
 
                             return (
                               <span
                                 key={itemIndex}
+                                onMouseEnter={(event) =>
+                                  handleMouseEnter(event, item)
+                                }
+                                onMouseLeave={handleMouseLeave}
                                 className={`rounded-lg ${itemColor} ${
                                   !isToday(day) ? "w-full h-full" : ""
                                 }`}
@@ -255,6 +286,53 @@ const MiniCalendar = () => {
               </div>
             );
           })}
+          {hoveredEvent && (
+            <div
+              style={{
+                position: "fixed",
+                top: tooltipPosition.y,
+                left: tooltipPosition.x,
+                background: "rgba(4, 9, 21, 0.8)",
+                color: "#e0f7ff",
+                padding: "8px",
+                borderRadius: "8px",
+                zIndex: 1000,
+                maxWidth: "150px",
+                pointerEvents: "none",
+                whiteSpace: "normal",
+                wordWrap: "break-word",
+                boxShadow: "0 0 10px rgba(190, 255, 255, 0.2)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(0, 255, 255, 0.2)",
+                fontFamily: "'Orbitron', sans-serif",
+                fontSize: "12px",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: "bold",
+                  color: "#f0faff",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {hoveredEvent.summary}
+              </div>
+              <div
+                style={{
+                  marginTop: "4px",
+                  color: "#89c2ff",
+                  fontSize: "10px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                }}
+              >
+                {new Date(hoveredEvent.start).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -280,8 +358,8 @@ const MiniCalendar = () => {
                     </span>
                     <span>
                       {item.summary}{" "}
-                      <span className="text-[10px] text-gray-200/50">
-                        - Today
+                      <span className="text-[10px] text-gray-200/50 whitespace-nowrap">
+                        — Today
                       </span>
                     </span>
                   </div>
@@ -348,8 +426,8 @@ const MiniCalendar = () => {
               </span>
               <span className="text-white/80 text-xs">
                 {item.summary}{" "}
-                <span className="text-[10px] text-gray-200/50">
-                  -{" "}
+                <span className="text-[10px] text-gray-200/50 whitespace-nowrap">
+                  &nbsp;—{" "}
                   {new Date(item.start).toLocaleDateString("en-US", {
                     timeZone: "Asia/Jakarta",
                     month: "short",

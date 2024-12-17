@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { invoke } from "@tauri-apps/api/tauri";
 import { PlusCircle, CalendarFold, MapPin } from "lucide-react";
 import FallbackImage from "../assets/fallback-image-events.jpg";
+import eventBus from "../utils/eventBus";
 
 const LocalEvents = () => {
   const [events, setEvents] = useState([]);
@@ -81,6 +82,7 @@ const LocalEvents = () => {
   const saveEvents = async (updatedEvents) => {
     try {
       await invoke("save_local_events", { events: updatedEvents });
+      eventBus.emit("events_updated");
     } catch (error) {
       console.error("Error saving events:", error);
     }
@@ -115,6 +117,7 @@ const LocalEvents = () => {
       date_end: "",
       location: "",
     });
+    eventBus.emit("events_updated");
     setNewEventModalOpen(false);
   };
 
@@ -140,6 +143,7 @@ const LocalEvents = () => {
 
     setEvents(updatedEvents);
     saveEvents(updatedEvents); // Persist changes
+    eventBus.emit("events_updated");
     setSelectedEvent(null); // Close modal
     setEditableEvent({}); // Reset editableEvent state
   };
@@ -158,47 +162,60 @@ const LocalEvents = () => {
     // Persist the changes
     saveEvents(updatedEvents);
 
+    eventBus.emit("events_updated");
+
     // Reset selectedEvent state
     setSelectedEvent(null);
   };
 
-  const preloadImages = async () => {
-    const updatedCache = { ...imageCache };
+  const preloadImages = useCallback(async () => {
+    const updatedCache = { ...imageCacheRef.current }; // Use a ref to track changes
 
+    const getPixabayImage = async (keyword) => {
+      try {
+        const filteredKeyword = filterTitle(keyword);
+        const response = await fetch(
+          `https://pixabay.com/api/?key=${pixabayApiKey}&q=${encodeURIComponent(
+            filteredKeyword
+          )}&image_type=photo&pretty=true`
+        );
+        const data = await response.json();
+        if (data.hits?.length > 0) return data.hits[0].webformatURL;
+      } catch (error) {
+        console.error("Error fetching image from Pixabay:", error);
+      }
+      return FallbackImage;
+    };
+
+    let hasUpdates = false;
     for (const event of events) {
       if (!updatedCache[event.id]) {
         const imageUrl = await getPixabayImage(event.title);
         updatedCache[event.id] = imageUrl;
+        hasUpdates = true; // Mark if there are updates
       }
     }
 
-    setImageCache(updatedCache);
-  };
+    if (hasUpdates) {
+      imageCacheRef.current = updatedCache; // Update ref
+      setImageCache(updatedCache); // Set state only if updated
+    }
+  }, [events, pixabayApiKey]);
+
+  // useRef to hold the cache
+  const imageCacheRef = useRef(imageCache);
 
   useEffect(() => {
     if (events.length > 0) {
       preloadImages();
     }
-  }, [events]);
+  }, [events, preloadImages]);
 
-  const getPixabayImage = async (keyword) => {
-    try {
-      // Filter the keyword to exclude unwanted words
-      const filteredKeyword = filterTitle(keyword);
-      const response = await fetch(
-        `https://pixabay.com/api/?key=${pixabayApiKey}&q=${encodeURIComponent(
-          filteredKeyword
-        )}&image_type=photo&pretty=true`
-      );
-      const data = await response.json();
-      if (data.hits && data.hits.length > 0) {
-        return data.hits[0].webformatURL;
-      }
-    } catch (error) {
-      console.error("Error fetching image from Pixabay:", error);
+  useEffect(() => {
+    if (events.length > 0) {
+      preloadImages();
     }
-    return FallbackImage;
-  };
+  }, [events, preloadImages]);
 
   return (
     <div className="p-4">
@@ -227,8 +244,8 @@ const LocalEvents = () => {
       {!isEventAvailable && (
         <div className="flex items-center justify-center h-[74px] w-[1240px] text-white">
           <p className="text-md">
-            No upcoming events. Click on the "Add Event" button to create a new
-            event.
+            No upcoming events. Click on the &quot;Add Event&quot; button to
+            create a new event.
           </p>
         </div>
       )}
@@ -354,6 +371,9 @@ bg-gray-950/40
                 onChange={handleEditChange}
                 placeholder="Event Title"
                 className="w-full text-2xl font-bold text-white text-center bg-transparent border-none outline-none placeholder-gray-400"
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                }}
               />
             </div>
 

@@ -24,6 +24,7 @@ import { Slide, ToastContainer, toast } from "react-toastify";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { formatDistanceToNow } from "date-fns";
 import "react-toastify/dist/ReactToastify.css";
+import eventBus from "../utils/eventBus";
 
 const LocalTasks = ({ setIsTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
@@ -102,6 +103,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     };
     const updatedTasks = [...tasks, newTaskEntry];
     setTasks(updatedTasks);
+    eventBus.emit("events_updated");
     setNewTask({ title: "", date: "", description: "" });
     setNewTaskModalOpen(false);
     showNotification("Task added successfully!", "success");
@@ -219,6 +221,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       task.id === selectedTask.id ? selectedTask : task
     );
     setTasks(updatedTasks);
+    eventBus.emit("events_updated");
     setSelectedTask(null);
     setErrorMessage("");
 
@@ -234,10 +237,12 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     setTasks(updatedTasks);
     try {
       await saveTasks(updatedTasks);
+      eventBus.emit("events_updated");
       showNotification("Task deleted successfully!", "success");
     } catch (error) {
       console.error("Error saving after deletion:", error);
     }
+    eventBus.emit("events_updated");
     setSelectedTask(null);
   };
 
@@ -290,12 +295,14 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       setTaskIsComplete(isComplete);
       deleteOldestCompletedTasks(tasks);
     }
+    eventBus.emit("events_updated");
   };
 
   const deleteTaskById = (taskId) => {
     const updatedTasks = tasks.filter((task) => task.id !== taskId);
     setTasks(updatedTasks);
     saveTasks(updatedTasks);
+    eventBus.emit("events_updated");
   };
 
   const deleteOldestCompletedTasks = (tasks) => {
@@ -312,6 +319,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
         deleteTaskById(task.id);
       });
     }
+    eventBus.emit("events_updated");
   };
 
   // Pagination
@@ -344,6 +352,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       ...prevTask,
       title: e.target.value,
     }));
+    eventBus.emit("events_updated");
   }, []);
 
   return (

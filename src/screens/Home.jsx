@@ -3,6 +3,7 @@ import axios from "axios";
 import MiniCalendar from "../components/MiniCalendar";
 import MusicPlayer from "../components/MusicPlayer";
 import ProjectWheel from "../components/ProjectWheel";
+import UpcomingThings from "../components/UpcomingThings";
 
 const Clock = () => {
   const [time, setTime] = useState(new Date());
@@ -140,19 +141,19 @@ const Home = () => {
           />
         </div>
 
-        <div className="w-96 flex flex-col gap-1">
-          <div className="flex-grow h-[57%] rounded-3xl bg-gray-950/40 p-6">
+        <div className="w-96 flex flex-col gap-1.5">
+          <div className="flex-grow max-h-[72%] min-h-[72%] rounded-3xl bg-gray-950/40 p-6">
             <MiniCalendar />
           </div>
           <div
-            className="relative flex-grow pl-36 -left-56 rounded-r-3xl bg-gray-950/40 p-6 z-10"
+            className="relative flex-grow -left-[222px] rounded-r-3xl bg-gray-950/40 z-10"
             style={{
-              width: "190%",
+              width: "187%",
               clipPath:
                 "path('M 172 0 L 567 0 l 1 169 L 67 169 C 56 169 47 163 43 154 C 40 146 40 135 48 124 L 141 14 C 145 10 146 9 151 6 C 158 2 165 0 170 0 Z')",
             }}
           >
-            Right Bottom
+            <UpcomingThings />
           </div>
         </div>
       </div>

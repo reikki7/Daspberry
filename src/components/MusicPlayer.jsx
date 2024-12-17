@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/tauri";
 import { parseBlob } from "music-metadata";
 import {
@@ -44,7 +44,7 @@ const MusicPlayer = () => {
   const currentTrackIndexRef = useRef(currentTrackIndex);
   const volumeSliderRef = useRef(null);
 
-  const isHome = location.pathname === "/";
+  const metadataCache = new Map(); // In-memory metadata cache
 
   // Play a random track on initial load
   useEffect(() => {
@@ -60,16 +60,11 @@ const MusicPlayer = () => {
     loadMusicFiles();
   }, []);
 
-  // Update refs for looping and current track index
   useEffect(() => {
     isLoopingSingleRef.current = isLoopingSingle;
-    currentTrackIndexRef.current = currentTrackIndex;
-  }, [isLoopingSingle, currentTrackIndex]);
-
-  // Update shuffle ref
-  useEffect(() => {
     isShuffleRef.current = isShuffle;
-  }, [isShuffle]);
+    currentTrackIndexRef.current = currentTrackIndex;
+  }, [isLoopingSingle, isShuffle, currentTrackIndex]);
 
   // Combined Volume and Playing State Effect
   useEffect(() => {
@@ -83,7 +78,6 @@ const MusicPlayer = () => {
           setCurrentTime(currentSound.seek() || 0);
         }, 10);
 
-        // Update refs for event handlers
         playerStateRef.current = {
           isLoopingSingle,
           currentTrackIndex,
@@ -100,12 +94,11 @@ const MusicPlayer = () => {
     return cleanup;
   }, [currentSound, volume, isMuted, isLoopingSingle, currentTrackIndex]);
 
-  // Fetch song metadata on music files change
   useEffect(() => {
     if (musicFiles.length > 0) {
       fetchSongMetadata(musicFiles);
     }
-  }, [musicFiles, currentSound]);
+  }, [musicFiles]);
 
   // Consolidated refs
   const playerStateRef = useRef({
@@ -120,7 +113,7 @@ const MusicPlayer = () => {
       const { currentSound, isLoopingSingle, currentTrackIndex } =
         playerStateRef.current;
 
-      if (!currentSound || musicMenu || !isHome) return;
+      if (!currentSound || musicMenu) return;
 
       // Prevent default behavior for Spacebar
       if (
@@ -167,22 +160,27 @@ const MusicPlayer = () => {
           });
           break;
 
-        case "ArrowUp":
+        // Increase Volume
+        case "ArrowUp": {
           event.preventDefault();
           const increasedVolume = Math.min(currentSound.volume() + 0.03, 1);
-          currentSound.volume(increasedVolume); // Update Howler's volume
-          setVolume(increasedVolume); // Update React state
+          currentSound.volume(increasedVolume);
+          setVolume(increasedVolume);
           event.stopPropagation();
           break;
+        }
 
-        case "ArrowDown":
+        // Decrease Volume
+        case "ArrowDown": {
           event.preventDefault();
           const decreasedVolume = Math.max(currentSound.volume() - 0.03, 0);
-          currentSound.volume(decreasedVolume); // Update Howler's volume
-          setVolume(decreasedVolume); // Update React state
+          currentSound.volume(decreasedVolume);
+          setVolume(decreasedVolume);
           event.stopPropagation();
           break;
+        }
 
+        // Seek Forward
         case "ArrowRight":
           event.preventDefault();
           if (event.ctrlKey) {
@@ -201,6 +199,7 @@ const MusicPlayer = () => {
           }
           break;
 
+        // Seek Backward
         case "ArrowLeft":
           if (event.ctrlKey) {
             currentSound.seek(Math.max(currentSound.seek() - 20, 0));
@@ -221,7 +220,7 @@ const MusicPlayer = () => {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [musicMenu, isPlaying, currentSound, isHome]);
+  }, [musicMenu, isPlaying, currentSound]);
 
   // Load music files from the system
   const loadMusicFiles = async () => {
@@ -235,8 +234,8 @@ const MusicPlayer = () => {
   };
 
   // Shuffle an array
-  const shuffleArray = (array) => {
-    let shuffledArray = array.slice();
+  const shuffleArray = useCallback((array) => {
+    const shuffledArray = [...array];
     for (let i = shuffledArray.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffledArray[i], shuffledArray[j]] = [
@@ -245,8 +244,9 @@ const MusicPlayer = () => {
       ];
     }
     return shuffledArray;
-  };
+  }, []);
 
+  // Returns the play index based on whether shuffle mode is enabled or not
   const getPlayIndex = useCallback(
     (requestedIndex) => {
       return !isShuffle
@@ -256,15 +256,16 @@ const MusicPlayer = () => {
     [isShuffle, shuffledIndices]
   );
 
+  // Returns the next track index based on whether shuffle mode is enabled or not
   const getNextTrackIndex = useCallback(
-    (currentIndex) => {
-      return !isShuffle
-        ? (currentIndex + 1) % musicFiles.length
-        : (currentIndex + 1) % shuffledIndices.length;
-    },
-    [isShuffle, musicFiles.length, shuffledIndices.length]
+    (currentIndex) =>
+      isShuffle
+        ? (currentIndex + 1) % shuffledIndices.length
+        : (currentIndex + 1) % musicFiles.length,
+    [isShuffle, shuffledIndices, musicFiles]
   );
 
+  // Returns the previous track index based on whether shuffle mode is enabled or not
   const getPrevTrackIndex = useCallback(
     (currentIndex) => {
       return !isShuffle
@@ -277,7 +278,6 @@ const MusicPlayer = () => {
     },
     [isShuffle, musicFiles.length, shuffledIndices.length]
   );
-
   // IndexedDB
   const initDB = async () => {
     return new Promise((resolve, reject) => {
@@ -337,9 +337,12 @@ const MusicPlayer = () => {
 
   // Get metadata and album art from IndexedDB
   const getMetadataFromCache = async (filePath, fileSize) => {
+    if (metadataCache.has(filePath)) return metadataCache.get(filePath);
+
     try {
       const db = await initDB();
       const transaction = db.transaction(["metadata", "albumArt"], "readonly");
+
       const metadataStore = transaction.objectStore("metadata");
       const albumArtStore = transaction.objectStore("albumArt");
 
@@ -354,92 +357,95 @@ const MusicPlayer = () => {
         }),
       ]);
 
-      // Check if metadata is still valid
       if (
-        !metadata ||
-        Date.now() - metadata.timestamp > 7 * 24 * 60 * 60 * 1000 ||
-        metadata.fileSize !== fileSize
+        metadata &&
+        metadata.fileSize === fileSize &&
+        Date.now() - metadata.timestamp < 7 * 24 * 60 * 60 * 1000
       ) {
-        return null;
+        const result = {
+          metadata: metadata.metadata,
+          albumArtBlob: albumArt?.blob || null,
+        };
+        metadataCache.set(filePath, result);
+        return result;
       }
 
-      return {
-        metadata: metadata.metadata,
-        albumArtBlob: albumArt?.blob || null,
-      };
+      return null; // Data is outdated
     } catch (error) {
-      console.error("Error reading from cache:", error);
+      console.error("Error reading from IndexedDB:", error);
       return null;
     }
   };
 
   // Fetch and parse song metadata
   const fetchSongMetadata = async (musicFiles) => {
-    const songData = await Promise.all(
-      musicFiles.map(async (file) => {
-        try {
-          // Try to get metadata and album art from cache first
-          const cachedData = await getMetadataFromCache(file.path, file.size);
-          if (cachedData) {
-            return {
-              metadata: cachedData.metadata,
-              albumArtBlob: cachedData.albumArtBlob,
-            };
-          }
+    const promises = musicFiles.map(async (file) => {
+      try {
+        if (metadataCache.has(file.path)) {
+          return metadataCache.get(file.path);
+        }
 
-          // If not in cache, fetch and parse metadata
-          const url = convertFileSrc(file.path);
-          const response = await fetch(url);
+        const cachedData = await getMetadataFromCache(file.path, file.size);
+        if (cachedData) {
+          metadataCache.set(file.path, cachedData);
+          return cachedData;
+        }
 
-          if (!response.ok) {
-            console.error("Fetch failed with status:", response.status);
-            return { metadata: null, albumArtBlob: null };
-          }
+        const url = convertFileSrc(file.path);
+        const response = await fetch(url);
 
-          const blob = await response.blob();
-          const metadata = await parseBlob(blob);
-
-          // Handle album art
-          let albumArtBlob = null;
-          if (metadata.common.picture && metadata.common.picture[0]) {
-            const picture = metadata.common.picture[0];
-            albumArtBlob = new Blob([picture.data], {
-              type: picture.format || "image/jpeg",
-            });
-          }
-
-          // Save both metadata and album art to cache
-          await saveMetadataToCache(file.path, metadata.common, albumArtBlob);
-
-          return { metadata: metadata.common, albumArtBlob };
-        } catch (error) {
-          console.error("Error processing file:", file.path, error);
+        if (!response.ok) {
+          console.error("Fetch failed for:", file.path);
           return { metadata: null, albumArtBlob: null };
         }
-      })
-    );
 
-    // Create object URLs for album art blobs
-    const metadataList = songData.map((data) => data.metadata).filter(Boolean);
-    const albumArtList = songData.map((data) => {
-      if (data.albumArtBlob instanceof Blob) {
-        return URL.createObjectURL(data.albumArtBlob);
+        const blob = await response.blob();
+        const metadata = await parseBlob(blob);
+
+        let albumArtBlob = null;
+        if (metadata.common.picture?.[0]) {
+          const picture = metadata.common.picture[0];
+          albumArtBlob = new Blob([picture.data], { type: picture.format });
+        }
+
+        const result = { metadata: metadata.common, albumArtBlob };
+        await saveMetadataToCache(file.path, metadata.common, albumArtBlob);
+        metadataCache.set(file.path, result);
+
+        return result;
+      } catch (error) {
+        console.error("Error processing file:", file.path, error);
+        return { metadata: null, albumArtBlob: null };
       }
-      return artDefault;
     });
+
+    const songData = await Promise.all(promises);
+
+    // Process results for state
+    const metadataList = songData.map((data) => data.metadata).filter(Boolean);
+    const albumArtList = songData.map((data) =>
+      data.albumArtBlob ? URL.createObjectURL(data.albumArtBlob) : artDefault
+    );
 
     setSongMetadata(metadataList);
     setAlbumArtList(albumArtList);
   };
 
-  // Cleanup URLs when component unmounts
   useEffect(() => {
     return () => {
-      if (albumArt !== artDefault) {
-        URL.revokeObjectURL(albumArt);
-      }
+      // Clean up all albumArtList URLs only when the component unmounts
+      albumArtList.forEach((url) => {
+        if (url !== artDefault) URL.revokeObjectURL(url);
+      });
     };
-  }, [albumArt]);
+  }, []); // Run this only once
+
+  const updateProgress = () => {
+    if (currentSound && currentSound.playing()) {
+      setCurrentTime(currentSound.seek() || 0);
+      requestAnimationFrame(updateProgress);
+    }
+  };
 
   // Play music
   const playMusic = async (index, firstPlay = true) => {
@@ -451,10 +457,16 @@ const MusicPlayer = () => {
       currentSound.stop();
     }
 
+    // Cleanup previous album art URL
+    if (albumArt && albumArt !== artDefault) {
+      URL.revokeObjectURL(albumArt);
+    }
+
     const currentTrackTitle = fileToPlay.name.replace(/\.mp3$/i, "");
     setTrackTitle(currentTrackTitle);
 
     try {
+      // Attempt to retrieve cached metadata and album art
       const songData = await getMetadataFromCache(
         fileToPlay.path,
         fileToPlay.size
@@ -468,8 +480,12 @@ const MusicPlayer = () => {
           setAlbumArt(artDefault);
         }
       } else {
-        // If not in cache, fetch and parse metadata
+        // If not cached, fetch the file and parse metadata
         const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${fileToPlay.path}`);
+        }
+
         const blob = await response.blob();
         const metadata = await parseBlob(blob);
         setTags(metadata.common);
@@ -486,6 +502,7 @@ const MusicPlayer = () => {
           setAlbumArt(artDefault);
         }
 
+        // Save metadata and album art to cache
         await saveMetadataToCache(
           fileToPlay.path,
           metadata.common,
@@ -493,11 +510,11 @@ const MusicPlayer = () => {
         );
       }
     } catch (error) {
-      console.error("Error fetching the file:", error);
+      console.error("Error fetching or parsing file:", error);
       setAlbumArt(artDefault);
     }
 
-    // Play the track
+    // Initialize and play the sound
     const sound = new Howl({
       src: [url],
       format: ["mp3", "wav"],
@@ -510,6 +527,12 @@ const MusicPlayer = () => {
         setCurrentTrack(url);
         setCurrentTrackIndex(index);
         setDuration(sound.duration());
+
+        // Start the progress updater
+        requestAnimationFrame(updateProgress);
+      },
+      onpause: () => {
+        setIsPlaying(false);
       },
       onend: () => {
         const currentIndex = currentTrackIndexRef.current;
@@ -523,10 +546,8 @@ const MusicPlayer = () => {
           playMusic(nextIndex);
         }
       },
-      onpause: () => {
-        setIsPlaying(false);
-      },
       onloaderror: () => {
+        console.error("Error loading track:", fileToPlay.path);
         const nextIndex = getNextTrackIndex(index);
         playMusic(nextIndex);
       },
@@ -535,24 +556,13 @@ const MusicPlayer = () => {
     setCurrentTrackIndex(actualIndex);
     setCurrentSound(sound);
 
+    // Update player state ref
     playerStateRef.current = {
       isLoopingSingle,
       currentTrackIndex: actualIndex,
       currentSound: sound,
     };
   };
-
-  // Add cleanup effect for album art URLs
-  useEffect(() => {
-    return () => {
-      // Cleanup existing albumArtList URLs
-      albumArtList.forEach((url) => {
-        if (url !== artDefault) {
-          URL.revokeObjectURL(url);
-        }
-      });
-    };
-  }, [albumArtList]);
 
   // Toggle play on track click
   const togglePlay = (index) => {
@@ -566,45 +576,25 @@ const MusicPlayer = () => {
   };
 
   // Toggle shuffle
-  const toggleShuffle = () => {
-    const currentShuffleState = isShuffleRef.current;
-
-    if (!currentShuffleState) {
-      const newShuffledIndices = shuffleArray(
-        Array.from({ length: musicFiles.length }, (_, i) => i)
-      );
-      setShuffledIndices(newShuffledIndices);
-      if (currentTrack) {
-        const currentOriginalIndex = musicFiles.findIndex(
-          (file) => convertFileSrc(file.path) === currentTrack
+  const toggleShuffle = useCallback(() => {
+    setIsShuffle((prev) => {
+      const newShuffleState = !prev;
+      if (newShuffleState) {
+        const shuffled = shuffleArray(
+          Array.from({ length: musicFiles.length }, (_, i) => i)
         );
-        const newPosition = newShuffledIndices.findIndex(
-          (index) => index === currentOriginalIndex
-        );
-        setCurrentTrackIndex(newPosition);
+        setShuffledIndices(shuffled);
       }
-    } else {
-      if (currentTrack) {
-        const originalIndex = shuffledIndices[currentTrackIndex];
-        setCurrentTrackIndex(originalIndex);
-      }
-    }
-
-    // Update state and ref
-    setIsShuffle((prev) => !prev);
-    isShuffleRef.current = !currentShuffleState; // Update the ref directly
-  };
+      return newShuffleState;
+    });
+  }, [musicFiles.length, shuffleArray]);
 
   // Toggle play/pause
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
     if (currentSound) {
-      if (isPlaying) {
-        currentSound.pause();
-      } else {
-        currentSound.play();
-      }
+      isPlaying ? currentSound.pause() : currentSound.play();
     }
-  };
+  }, [currentSound, isPlaying]);
 
   // Stop music
   const stopMusic = () => {
@@ -626,26 +616,38 @@ const MusicPlayer = () => {
   };
 
   // Toggle mute
-  const toggleMute = () => {
-    setIsMuted((prev) => !prev);
-    if (currentSound) {
-      currentSound.mute(!isMuted);
-    }
-  };
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const newMutedState = !prev;
+      if (currentSound) currentSound.mute(newMutedState);
+      return newMutedState;
+    });
+  }, [currentSound]);
 
   // Handle progress change
   const handleProgressChange = (e) => {
-    const progress = parseFloat(e.target.value);
-    const newTime = (progress / 100) * currentSound.duration();
-    currentSound.seek(newTime);
+    if (currentSound) {
+      const progress = parseFloat(e.target.value);
+      const newTime = Math.max(
+        0,
+        Math.min(
+          (progress / 100) * currentSound.duration(),
+          currentSound.duration()
+        )
+      );
+      currentSound.seek(newTime);
+    }
   };
 
   // Format time in minutes and seconds
-  const formatTime = (time) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
-  };
+  const formatTime = useMemo(
+    () => (time) => {
+      const minutes = Math.floor(time / 60);
+      const seconds = Math.floor(time % 60);
+      return `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
+    },
+    []
+  );
 
   // Play next track
   const toggleNextTrack = () => {
@@ -803,10 +805,7 @@ const MusicPlayer = () => {
               />
 
               {/* Time */}
-              <div
-                className="flex text-[10px] text-white/40 justify-between"
-                style={{ userSelect: "none" }}
-              >
+              <div className="flex text-[10px] text-white/40 justify-between">
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>

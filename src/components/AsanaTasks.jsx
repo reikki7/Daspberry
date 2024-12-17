@@ -22,6 +22,8 @@ import CustomDropdown from "./CustomDropdown";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import { formatDistanceToNow } from "date-fns";
 import "react-toastify/dist/ReactToastify.css";
+import { debounce } from "lodash";
+import eventBus from "../utils/eventBus";
 
 const AsanaTasks = ({ isTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
@@ -82,22 +84,23 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     defaultAssignee || ""
   );
 
+  const debouncedSaveTasks = useCallback(
+    debounce((data) => {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(
+          CACHE_EXPIRY_KEY,
+          (Date.now() + CACHE_DURATION).toString()
+        );
+      } catch (error) {
+        console.error("Failed to save tasks to localStorage", error);
+      }
+    }, 1000),
+    []
+  );
+
   const saveTasksToLocalStorage = (tasks) => {
-    try {
-      // Implement debouncing for storage operations
-      const debouncedSave = useCallback(
-        debounce((data) => {
-          localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-        }, 1000),
-        []
-      );
-      localStorage.setItem(
-        CACHE_EXPIRY_KEY,
-        (Date.now() + CACHE_DURATION).toString()
-      );
-    } catch (error) {
-      console.error("Failed to save tasks to localStorage", error);
-    }
+    debouncedSaveTasks(tasks);
   };
 
   const getTasksFromLocalStorage = () => {
@@ -121,6 +124,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
   const updateTasksCache = (updatedTasks) => {
     saveTasksToLocalStorage(updatedTasks);
     cacheTasksViaTauri(updatedTasks);
+    eventBus.emit("events_updated");
   };
 
   const saveUserDetailsToLocalStorage = (userDetails) => {
@@ -345,6 +349,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         setTasks((prevTasks) => {
           const updatedTasks = [...prevTasks, result.data];
           updateTasksCache(updatedTasks);
+          eventBus.emit("events_updated");
           return updatedTasks;
         });
       } else {
@@ -470,6 +475,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
             task.gid === taskGid ? updatedTask.data : task
           );
           updateTasksCache(updatedTasks);
+          eventBus.emit("events_updated");
           return updatedTasks;
         });
       } catch (err) {
@@ -499,6 +505,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
 
       setTaskIsComplete(isComplete);
       setSelectedTask(updatedTask);
+      eventBus.emit("events_updated");
 
       // Remove task from list if completed
       if (isComplete) {
@@ -529,6 +536,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
           t.gid === selectedTask.gid ? { ...t, due_on: newDate } : t
         )
       );
+      eventBus.emit("events_updated");
     } catch (err) {
       console.error("Failed to update task date:", err);
     }

@@ -7,6 +7,7 @@ import GoogleLogo from "../assets/g-logo.png";
 import { RefreshCw } from "lucide-react";
 import { ScaleLoader } from "react-spinners";
 import GoogleCalendarIcon from "../assets/google-calendar-logo.png";
+import eventBus from "../utils/eventBus";
 
 const CACHE_KEY = "cached_events";
 const LAST_FETCH_KEY = "last_fetch_timestamp";
@@ -85,6 +86,7 @@ const GoogleCalendarEvents = () => {
       setEvents(fetchedEvents);
       localStorage.setItem(CACHE_KEY, JSON.stringify(fetchedEvents));
       localStorage.setItem(LAST_FETCH_KEY, Date.now().toString());
+      eventBus.emit("events_updated");
     } catch (error) {
       console.error("Failed to fetch events:", error);
     } finally {
