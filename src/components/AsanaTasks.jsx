@@ -179,34 +179,26 @@ const AsanaTasks = ({ isTaskAvailable }) => {
 
   const fetchUserDetails = async () => {
     try {
-      let userDetails = getUserDetailsFromLocalStorage();
+      const response = await fetch(
+        "https://app.asana.com/api/1.0/users",
+        options
+      );
 
-      if (!userDetails) {
-        userDetails = await fetchUserDetailsFromTauriCache();
+      if (!response.ok) {
+        throw new Error("Failed to fetch user details");
       }
 
-      if (!userDetails) {
-        const response = await fetch(
-          "https://app.asana.com/api/1.0/users",
-          options
-        );
+      const data = await response.json();
+      const userDetails = data.data.map((user) => ({
+        gid: user.gid,
+        name: user.name,
+      }));
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch user details");
-        }
-
-        const data = await response.json();
-        userDetails = data.data.reduce((acc, user) => {
-          const profileUrl = `https://app.asana.com/0/profile/${user.gid}`;
-          acc[profileUrl] = user.name;
-          return acc;
-        }, {});
-
-        saveUserDetailsToLocalStorage(userDetails);
-        await cacheUserDetailsViaTauri(userDetails);
-      }
+      console.log("User details:", userDetails);
 
       setUsers(userDetails);
+      saveUserDetailsToLocalStorage(userDetails);
+      await cacheUserDetailsViaTauri(userDetails);
     } catch (err) {
       console.error("Error fetching user details:", err);
     }
@@ -396,7 +388,19 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         setLoading(true);
         setError(null);
 
-        await fetchUserDetails();
+        let userDetails = getUserDetailsFromLocalStorage();
+
+        if (!userDetails) {
+          userDetails = await fetchUserDetailsFromTauriCache();
+        }
+
+        if (!userDetails) {
+          // Fallback: Fetch from network if cache misses
+          await fetchUserDetails();
+        } else {
+          console.log("Using cached user details");
+          setUsers(userDetails);
+        }
 
         let retrievedTasks = null;
 
