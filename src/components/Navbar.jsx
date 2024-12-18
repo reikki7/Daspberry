@@ -12,11 +12,11 @@ const Navbar = () => {
       style={{ userSelect: "none" }}
     >
       {/* Avatar Section */}
-      <div className="ml-[80px] flex items-center px-2 py-2 pr-4 rounded-full bg-gray-950/40 gap-2 backdrop-blur-md border border-white/10 shadow-md">
+      <div className="ml-[80px] flex items-center px-2 py-2 pr-6 rounded-full bg-gray-950/40 gap-2 backdrop-blur-md border border-white/10 shadow-md">
         <img
           src={AvatarIcon}
           alt="avatar"
-          className="rounded-full"
+          className="rounded-full mr-3"
           style={{
             width: "35px",
             height: "auto",
