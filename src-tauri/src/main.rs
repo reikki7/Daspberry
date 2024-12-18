@@ -145,7 +145,7 @@ async fn fetch_google_calendar_events(access_token: String) -> Result<Vec<Calend
         .get("https://www.googleapis.com/calendar/v3/calendars/primary/events")
         .bearer_auth(access_token)
         .query(&[
-            ("timeMin", one_month_before_now.as_str()), // Set timeMin to one month before now
+            ("timeMin", one_month_before_now.as_str()),
             ("singleEvents", "true"), 
             ("orderBy", "startTime")
         ])

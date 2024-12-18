@@ -11,55 +11,50 @@ const Navbar = () => {
       className="text-white flex items-center text-sm justify-between px-4 mr-10 absolute top-5 left-0 right-0"
       style={{ userSelect: "none" }}
     >
-      <div className="ml-[80px] flex items-center px-2 py-2 pr-4 rounded-full bg-gray-950/40 gap-2">
+      {/* Avatar Section */}
+      <div className="ml-[80px] flex items-center px-2 py-2 pr-4 rounded-full bg-gray-950/40 gap-2 backdrop-blur-md border border-white/10 shadow-md">
         <img
           src={AvatarIcon}
           alt="avatar"
           className="rounded-full"
-          style={{ width: "30px", height: "auto" }}
+          style={{
+            width: "35px",
+            height: "auto",
+            boxShadow: "0 0 9px #e031cb",
+          }}
         />
-        <p>Hello, KidKat</p>
+        <p className="font-extralight tracking-wider animate-pulse">
+          Hello, KidKat
+        </p>
       </div>
+
+      {/* Navigation Links */}
       <ul className="flex gap-6">
-        <li>
-          <Link to="/events">
-            <div
-              className={`px-6 py-2 rounded-full duration-200 ${
-                location.pathname === "/events"
-                  ? "bg-gradient-to-r from-blue-700/30 via-purple-500/20 to-pink-900/30 text-white"
-                  : "bg-gray-950/40 hover:opacity-70"
-              }`}
-            >
-              Events
-            </div>
-          </Link>
-        </li>
-        <li>
-          <Link to="/tasks">
-            <div
-              className={`px-6 py-2 rounded-full duration-200 ${
-                location.pathname === "/tasks"
-                  ? "bg-gradient-to-r from-blue-700/30 via-purple-500/20 to-pink-900/30 text-white"
-                  : "bg-gray-950/40 hover:opacity-70"
-              }`}
-            >
-              Tasks
-            </div>
-          </Link>
-        </li>
-        <li>
-          <Link to="/projects">
-            <div
-              className={`px-6 py-2 rounded-full duration-200 ${
-                location.pathname === "/projects"
-                  ? "bg-gradient-to-r from-blue-700/30 via-purple-500/20 to-pink-900/30 text-white"
-                  : "bg-gray-950/40 hover:opacity-70"
-              }`}
-            >
-              Projects
-            </div>
-          </Link>
-        </li>
+        {[
+          { name: "Events", path: "/events" },
+          { name: "Tasks", path: "/tasks" },
+          { name: "Projects", path: "/projects" },
+        ].map((item) => (
+          <li key={item.path}>
+            <Link to={item.path}>
+              <div
+                className={`px-6 py-2 rounded-full text-white text-sm tracking-wide font-light transition-all duration-300 shadow-lg
+                ${
+                  location.pathname === item.path
+                    ? "bg-gradient-to-r from-[#ff69af] via-[#832ed3] to-[#2188e9] text-white shadow-lg shadow-pink-500/30 border border-white/20"
+                    : "bg-gray-950/40 hover:opacity-90 hover:shadow-lg hover:shadow-blue-400/30 border border-white/10"
+                }`}
+                style={{
+                  userSelect: "none",
+                  backgroundSize: "105%",
+                  backgroundPosition: "50%",
+                }}
+              >
+                {item.name}
+              </div>
+            </Link>
+          </li>
+        ))}
       </ul>
     </div>
   );

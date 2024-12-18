@@ -57,8 +57,11 @@ const UpcomingThings = () => {
         .filter((task) => task.date > new Date())
         .sort((a, b) => a.date - b.date);
 
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0); // Set time to the start of the day
+
       const sortedEvents = allEvents
-        .filter((event) => event.date > new Date())
+        .filter((event) => event.date >= startOfToday) // Include events from today onwards
         .sort((a, b) => a.date - b.date);
 
       // Set state with the nearest task and event
@@ -98,7 +101,17 @@ const UpcomingThings = () => {
       {upcomingEvent && (
         <div className="relative ml-40 group mt-2 p-3 rounded-lg border border-gray-700/40 shadow-md hover:shadow-cyan-500/30 transition-all duration-300 max-w-[305px]">
           <div className="text-[9px] text-cyan-300 uppercase tracking-widest">
-            Upcoming Event
+            {/* Determine if the event is today */}
+            {(() => {
+              const eventDate = new Date(upcomingEvent.date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+
+              if (eventDate.toDateString() === today.toDateString()) {
+                return "Today's Event";
+              }
+              return "Upcoming Event";
+            })()}
             <span className="text-[9px] text-gray-200 mt-1">
               {" "}
               —{" "}
@@ -120,9 +133,23 @@ const UpcomingThings = () => {
 
       {/* Upcoming Task */}
       {upcomingTask && (
-        <div className="relative ml-24 group mt-2 p-3 rounded-lg border border-gray-700/40 shadow-md hover:shadow-pink-500/30 transition-all duration-300 max-w-[305px]">
+        <div
+          className={`relative ${
+            upcomingEvent ? "ml-24" : "ml-[146px]"
+          } group mt-2 p-3 rounded-lg border border-gray-700/40 shadow-md hover:shadow-pink-500/30 transition-all duration-300 max-w-[305px]`}
+        >
           <div className="text-[9px] text-pink-300 uppercase tracking-widest">
-            Upcoming Deadline
+            {/* Determine if the deadline is today */}
+            {(() => {
+              const taskDate = new Date(upcomingTask.date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+
+              if (taskDate.toDateString() === today.toDateString()) {
+                return "Deadline Today";
+              }
+              return "Upcoming Deadline";
+            })()}
             <span className="text-[9px] text-gray-200 mt-1">
               {" "}
               —{" "}
