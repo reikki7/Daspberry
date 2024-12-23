@@ -304,7 +304,7 @@ const ProjectWheel = () => {
             {/* Refetch Data */}
             <button
               onClick={resetGithubData}
-              className="absolute bg-[#1d66f0]/60 duration-200 hover:bg-[#1d66f0] group z-[20] text-gray-950/40 rounded-full p-[9px] top-2 right-2"
+              className="absolute bg-[#1d66f0]/60 duration-200 hover:bg-[#1d66f0] group z-[10] text-gray-950/40 rounded-full p-[9px] top-2 right-2"
             >
               <RefreshCwIcon
                 size={15}
