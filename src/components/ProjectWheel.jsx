@@ -297,16 +297,20 @@ const ProjectWheel = () => {
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="mb-14 flex flex-col justify-center items-center w-1/4 relative">
+    <div className="flex items-center justify-between relative">
+      <div className="mb-14 flex flex-col justify-center items-center w-1/4 ">
         {category === "Github" && (
           <div>
             {/* Refetch Data */}
             <button
               onClick={resetGithubData}
-              className="absolute bg-[#1d66f0] text-gray-950/40 rounded-bl-lg rounded-tr-lg rounded-br-3xl rounded-tl-3xl p-[9px] tp[-1 left-0"
+              className="absolute bg-[#1d66f0]/60 duration-200 hover:bg-[#1d66f0] group z-[20] text-gray-950/40 rounded-full p-[9px] top-2 right-2"
             >
-              <RefreshCwIcon size={15} color="white" />
+              <RefreshCwIcon
+                size={15}
+                color="white"
+                className="group-hover:rotate-90 duration-300"
+              />
             </button>
           </div>
         )}
@@ -388,8 +392,8 @@ const ProjectWheel = () => {
 
             if (index === 0) {
               positionClass = item.exiting
-                ? "scale-100 z-10 opacity-0 translate-y-[-20px]"
-                : "scale-100 z-10 opacity-100";
+                ? "scale-100 z-[9] opacity-0 translate-y-[-20px]"
+                : "scale-100 z-[9] opacity-100";
             }
 
             function openFolderInVSCode(path) {

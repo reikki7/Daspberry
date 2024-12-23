@@ -80,6 +80,8 @@ struct Event {
     description: Option<String>,
     date_start: Option<String>,
     date_end: Option<String>,
+    time_start: Option<String>,
+    time_end: Option<String>,
     time: Option<String>,
     location: Option<String>,
 }
@@ -201,6 +203,32 @@ async fn fetch_google_calendar_events(access_token: String) -> Result<Vec<Calend
         Err(format!("Failed to fetch events: {} - {}", status, error_text))
     }
 }
+
+#[command]
+async fn refresh_google_tokens(refresh_token: String) -> Result<TokenResponse, String> {
+    let client = Client::new();
+    let params = [
+        ("refresh_token", refresh_token),
+        ("client_id", get_google_client_id().to_string()),
+        ("client_secret", get_google_client_secret().to_string()),
+        ("grant_type", "refresh_token".to_string()),
+    ];
+
+    let response = client
+        .post("https://oauth2.googleapis.com/token")
+        .form(&params)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if response.status().is_success() {
+        let token_data: TokenResponse = response.json().await.map_err(|e| e.to_string())?;
+        Ok(token_data)
+    } else {
+        Err("Failed to refresh tokens".to_string())
+    }
+}
+
 #[tauri::command]
 fn handle_oauth_callback(app_handle: tauri::AppHandle, url: String) -> Result<(), String> {
     println!("Received callback URL: {}", url);
@@ -385,6 +413,7 @@ fn visit_dirs(dir: &PathBuf, music_files: &mut Vec<MusicFile>) -> std::io::Resul
     Ok(())
 }
 
+// Github
 #[command]
 fn cache_github_repos(data: String) -> Result<(), String> {
     let cache_path = dirs::data_local_dir()
@@ -423,6 +452,7 @@ fn clear_github_cache() -> Result<(), String> {
     }
 }
 
+// Asana Tasks
 #[command]
 fn cache_asana_tasks(data: String) -> Result<(), String> {
     let cache_path = dirs::data_local_dir()
@@ -447,6 +477,7 @@ fn read_asana_tasks_cache() -> Result<String, String> {
     }
 }
 
+// Asana Users
 #[command]
 fn cache_asana_user_details(data: String) -> Result<(), String> {
   let cache_path = dirs::data_local_dir()
@@ -471,6 +502,7 @@ fn read_asana_user_details_cache() -> Result<String, String> {
   }
 }
 
+// Local tasks
 #[command]
 fn save_local_tasks(tasks: Vec<Task>) -> Result<(), String> {
     let tasks_json = serde_json::to_string(&tasks)
@@ -505,6 +537,7 @@ fn load_local_tasks() -> Result<Vec<Task>, String> {
     Ok(tasks)
 }
 
+// Local events
 #[command]
 fn save_local_events(events: Vec<Event>) -> Result<(), String> {
     let events_json = serde_json::to_string(&events)
@@ -558,7 +591,7 @@ fn main() {
     dotenv::dotenv().ok(); 
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache, cache_asana_tasks, read_asana_tasks_cache, cache_asana_user_details, read_asana_user_details_cache, get_google_auth_url, get_google_tokens, fetch_google_calendar_events, handle_oauth_callback, save_local_tasks, load_local_tasks, save_local_events, load_local_events, clear_local_events])
+        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache, cache_asana_tasks, read_asana_tasks_cache, cache_asana_user_details, read_asana_user_details_cache, get_google_auth_url, get_google_tokens, fetch_google_calendar_events, handle_oauth_callback, save_local_tasks, load_local_tasks, save_local_events, load_local_events, clear_local_events, get_google_tokens, refresh_google_tokens])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -3,8 +3,8 @@ import { invoke } from "@tauri-apps/api/tauri";
 import eventBus from "../utils/eventBus";
 
 const UpcomingThings = () => {
-  const [upcomingEvent, setUpcomingEvent] = useState(null);
-  const [upcomingTask, setUpcomingTask] = useState(null);
+  const [firstCard, setFirstCard] = useState(null);
+  const [secondCard, setSecondCard] = useState(null);
 
   const loadUpcomingThings = async () => {
     try {
@@ -14,7 +14,6 @@ const UpcomingThings = () => {
       const loadedGoogleEvents =
         JSON.parse(localStorage.getItem("cached_events")) || [];
 
-      // Safely parse Asana tasks
       try {
         loadedAsanaTasks = JSON.parse(loadedAsanaTasks);
       } catch (error) {
@@ -22,21 +21,21 @@ const UpcomingThings = () => {
         loadedAsanaTasks = [];
       }
 
-      // Combine all tasks
       const allTasks = [
         ...(loadedLocalTasks?.map((task) => ({
           summary: task.title,
           date: new Date(task.date),
           type: "local_task",
+          completed: task.completed,
         })) || []),
         ...(loadedAsanaTasks?.map((task) => ({
           summary: task.name,
           date: new Date(task.due_on),
           type: "asana_task",
+          completed: task.completed,
         })) || []),
       ];
 
-      // Combine all events
       const allEvents = [
         ...(loadedLocalEvents?.map((event) => ({
           summary: event.title,
@@ -52,122 +51,130 @@ const UpcomingThings = () => {
           })) || []),
       ];
 
-      // Sort and filter upcoming tasks and events
       const sortedTasks = allTasks
-        .filter((task) => task.date > new Date())
+        .filter((task) => task.date > new Date() && !task.completed)
         .sort((a, b) => a.date - b.date);
 
       const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0); // Set time to the start of the day
+      startOfToday.setHours(0, 0, 0, 0);
 
       const sortedEvents = allEvents
-        .filter((event) => event.date >= startOfToday) // Include events from today onwards
+        .filter((event) => event.date >= startOfToday)
         .sort((a, b) => a.date - b.date);
 
-      // Set state with the nearest task and event
-      setUpcomingTask(sortedTasks[0] || null);
-      setUpcomingEvent(sortedEvents[0] || null);
+      if (sortedEvents.length > 0 && sortedTasks.length > 0) {
+        setFirstCard(sortedEvents[0]);
+        setSecondCard(sortedTasks[0]);
+      } else if (sortedEvents.length > 1) {
+        setFirstCard(sortedEvents[0]);
+        setSecondCard(sortedEvents[1]);
+      } else if (sortedTasks.length > 1) {
+        setFirstCard(sortedTasks[0]);
+        setSecondCard(sortedTasks[1]);
+      } else {
+        setFirstCard(
+          sortedEvents[0] || {
+            summary: "No upcoming event",
+            date: null,
+            type: "local_event",
+          }
+        );
+        setSecondCard(
+          sortedTasks[0] || {
+            summary: "No upcoming deadline",
+            date: null,
+            type: "local_task",
+          }
+        );
+      }
     } catch (error) {
       console.error("Error loading upcoming things:", error);
     }
   };
 
   useEffect(() => {
-    // Initial load
     loadUpcomingThings();
 
-    // Listen for 'events_updated' and 'tasks_updated'
     const handleUpdate = () => {
-      console.log("UpcomingThings: Reloading data due to event or task update");
       loadUpcomingThings();
     };
 
     eventBus.on("events_updated", handleUpdate);
     eventBus.on("tasks_updated", handleUpdate);
 
-    // Cleanup listener on unmount
     return () => {
       eventBus.off("events_updated", handleUpdate);
       eventBus.off("tasks_updated", handleUpdate);
     };
   }, []);
 
+  const formatDate = (date) => {
+    return date
+      ? date.toLocaleDateString("en-US", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : "";
+  };
+
+  const getTitle = (card) => {
+    if (!card?.date) return "Upcoming Event";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (card.date.toDateString() === today.toDateString()) {
+      return card.type.includes("event") ? "Today's Event" : "Deadline Today";
+    }
+
+    return card.type.includes("event") ? "Upcoming Event" : "Upcoming Deadline";
+  };
+
   return (
     <div
       className="mt-2 relative pr-3 flex flex-col"
       style={{ userSelect: "none" }}
     >
-      {/* Upcoming Event */}
-      {upcomingEvent && (
-        <div className="relative ml-40 group mt-2 p-3 rounded-lg border border-gray-700/40 shadow-md hover:shadow-cyan-500/30 transition-all duration-300 max-w-[305px]">
-          <div className="text-[9px] text-cyan-300 uppercase tracking-widest">
-            {/* Determine if the event is today */}
-            {(() => {
-              const eventDate = new Date(upcomingEvent.date);
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
+      {[firstCard, secondCard].map((card, index) => {
+        const isEvent = card?.type?.includes("event");
+        const color = isEvent ? "text-cyan-300" : "text-pink-300";
+        const isPlaceholder = card?.summary?.includes("No upcoming");
 
-              if (eventDate.toDateString() === today.toDateString()) {
-                return "Today's Event";
-              }
-              return "Upcoming Event";
-            })()}
-            <span className="text-[9px] text-gray-200 mt-1">
-              {" "}
-              —{" "}
-              {upcomingEvent.date.toLocaleDateString("en-US", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
+        return (
+          <div
+            key={index}
+            className={`${
+              index === 1 ? "ml-24" : "ml-40"
+            } group mt-2 p-3 rounded-lg border border-gray-700/40 shadow-md transition-all duration-300 max-w-[325px] ${
+              isEvent ? "hover:shadow-cyan-400/30" : "hover:shadow-pink-400/30"
+            }`}
+          >
+            <div className={`text-[9px] ${color} uppercase tracking-widest`}>
+              {getTitle(card)}
+              {card?.date && !isPlaceholder && (
+                <span className="text-[9px] text-gray-200 mt-1">
+                  {" — " + formatDate(new Date(card.date))}
+                </span>
+              )}
+            </div>
+            <div
+              className={`text-sm mt-1 font-medium ${
+                isPlaceholder ? "text-gray-400 italic" : "text-white"
+              }`}
+            >
+              {card?.summary || "No upcoming event"}
+            </div>
+            <div
+              className={`absolute rotate-12 opacity-50 text-xl ${color} ${
+                index === 0 ? "top-0 right-3" : "top-[72px] right-[72px]"
+              } group-hover:animate-pulse`}
+            >
+              {isEvent ? "運" : "任"}
+            </div>
           </div>
-          <div className="text-sm text-white mt-1 font-medium">
-            {upcomingEvent.summary}
-          </div>
-          <div className="absolute rotate-12 -top-1 -right-1 opacity-50 text-xl text-cyan-400 group-hover:animate-pulse">
-            運
-          </div>
-        </div>
-      )}
-
-      {/* Upcoming Task */}
-      {upcomingTask && (
-        <div
-          className={`relative ${
-            upcomingEvent ? "ml-24" : "ml-[146px]"
-          } group mt-2 p-3 rounded-lg border border-gray-700/40 shadow-md hover:shadow-pink-500/30 transition-all duration-300 max-w-[305px]`}
-        >
-          <div className="text-[9px] text-pink-300 uppercase tracking-widest">
-            {/* Determine if the deadline is today */}
-            {(() => {
-              const taskDate = new Date(upcomingTask.date);
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-
-              if (taskDate.toDateString() === today.toDateString()) {
-                return "Deadline Today";
-              }
-              return "Upcoming Deadline";
-            })()}
-            <span className="text-[9px] text-gray-200 mt-1">
-              {" "}
-              —{" "}
-              {upcomingTask.date.toLocaleDateString("en-US", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-          </div>
-          <div className="text-sm text-white mt-1 font-medium">
-            {upcomingTask.summary}
-          </div>
-          <div className="absolute rotate-12 -top-2 -right-2 opacity-50 text-xl text-pink-300 group-hover:animate-pulse">
-            任
-          </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 };

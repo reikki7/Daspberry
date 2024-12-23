@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -78,6 +78,20 @@ const AppContent = () => {
 };
 
 const App = () => {
+  useEffect(() => {
+    const disableContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    // Add the event listener
+    window.addEventListener("contextmenu", disableContextMenu);
+
+    // Cleanup the event listener on unmount
+    return () => {
+      window.removeEventListener("contextmenu", disableContextMenu);
+    };
+  }, []);
+
   return (
     <GoogleOAuthProvider clientId="456183410872-0cg2i4jotv7j9jjgv3qog8q21tq6463a.apps.googleusercontent.com">
       <AuthProvider>

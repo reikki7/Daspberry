@@ -88,8 +88,7 @@ const Home = () => {
 
   useEffect(() => {
     const handleCalendarUpdate = () => {
-      console.log("Forcing MiniCalendar reload...");
-      setCalendarKey((prev) => prev + 1); // Increment key to force re-mount
+      setCalendarKey((prev) => prev + 1);
     };
 
     eventBus.on("events_updated", handleCalendarUpdate);
@@ -101,7 +100,7 @@ const Home = () => {
     <div className="flex flex-col gap-1 h-[864px]">
       <div className="flex gap-0.5 relative flex-row h-3/4 flex-grow ">
         <div
-          className="flex w-[250px] flex-col gap-1 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20"
+          className="flex w-[250px] flex-col gap-1.5 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20"
           style={{ userSelect: "none" }}
         >
           <img
@@ -122,52 +121,62 @@ const Home = () => {
         >
           <Clock />
         </div>
-        <img
-          src="/signature.png"
-          alt="Signature"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          className={`absolute z-10 flex items-center justify-center duration-[320ms] w-[900px] h-auto top-9 right-56 ${
-            isHovered ? "opacity-100" : "opacity-0"
-          }`}
-          style={{
-            filter: "invert(100%) brightness(200%)",
-            userSelect: "none",
-          }}
-        />
         <div
-          className="flex flex-col w-full hover:brightness-95 duration-300 gap-1 rounded-3xl bg-gray-950/20 border border-white/20 p-6 relative overflow-hidden"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
+          className={`absolute z-10 flex items-center justify-center duration-[320ms] w-[300px] h-auto -bottom-8 left-[120px] ${
+            isHovered ? "opacity-100 scale-100" : "opacity-0 scale-95"
+          }`}
+        >
+          <div
+            className="flex flex-col gap-1.5 relative"
+            style={{
+              filter: "drop-shadow(0 6px 5px rgba(109, 4, 231, 0.7))",
+              userSelect: "none",
+            }}
+          >
+            <span className="absolute left-16 -top-2 font-montserrat drop-shadow">
+              Made by
+            </span>
+            <img
+              src="/signature.png"
+              alt="Signature"
+              onClick={() => setIsHovered(!isHovered)}
+            />
+          </div>
+        </div>
+        <div
+          className="flex flex-col w-full duration-300 gap-1 rounded-3xl bg-gray-950/20 border border-white/20 p-6 relative overflow-hidden"
+          onClick={() => setIsHovered(!isHovered)}
           style={{
             clipPath:
-              "path('M 0 0 L 221 0 C 234 0 240 0 250 7 L 358 74 C 378 87 441 90 470 74 L 577 6 C 587 0 592 0 602 0 L 845 0 l 0 433 C 845 445 841 449 832 449 l -30 0 C 784 449 779 449 765 466 L 649 603 C 631 624 626 624 605 624 L 0 624 Z')",
+              "path('M 0 0 L 224 0 C 237 0 243 0 253 7 L 358 74 C 377 87 458 88 479 74 L 580 6 C 590 0 595 0 605 0 L 845 0 l -1 444 C 844 466 831 473 813 473 l -31 0 C 763 473 758 473 743 489 l -105 126 C 618 638 606 648 582 648 L 0 648 Z')",
             userSelect: "none",
           }}
         >
           <img
             src="/main-background.jpg"
             alt="Background"
-            className={`absolute inset-0 w-full h-full object-cover rounded-3xl transition-transform duration-300 ease-in-out ${
-              isHovered ? "scale-105" : "scale-100"
-            }`}
+            className="absolute inset-0 hover:scale-105 w-full h-full object-cover rounded-3xl transition-transform duration-300 ease-in-out"
             style={{ userSelect: "none" }}
           />
         </div>
 
-        <div className="w-96 flex flex-col gap-1.5">
-          <div className="flex-grow max-h-[72%] min-h-[72%] rounded-3xl bg-gray-950/40 p-6">
+        <div className="w-[255px] flex ml-1 flex-col gap-1.5">
+          <div className="flex-grow max-h-[73%] min-h-[73%] rounded-3xl bg-gray-950/40 p-6">
             <MiniCalendar key={calendarKey} />
           </div>
           <div
-            className="relative flex-grow -left-[222px] rounded-r-3xl bg-gray-950/40 z-10"
+            className="relative -left-[245px] rounded-r-3xl bg-gray-950/40 z-10"
             style={{
-              width: "187%",
+              width: "499px",
+              height: "169px",
               clipPath:
                 "path('M 172 0 L 567 0 l 1 169 L 67 169 C 56 169 47 163 43 154 C 40 146 40 135 48 124 L 141 14 C 145 10 146 9 151 6 C 158 2 165 0 170 0 Z')",
+              userSelect: "none",
             }}
           >
-            <UpcomingThings />
+            <div className="absolute inset-0 overflow-hidden">
+              <UpcomingThings />
+            </div>
           </div>
         </div>
       </div>

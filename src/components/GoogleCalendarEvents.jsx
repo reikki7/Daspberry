@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useAuth } from "../utils/AuthContext";
 import { WebviewWindow } from "@tauri-apps/api/window";
-import { FaCalendarAlt, FaClock } from "react-icons/fa";
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt } from "react-icons/fa";
 import GoogleLogo from "../assets/g-logo.png";
+import { FcGoogle } from "react-icons/fc";
 import { RefreshCw } from "lucide-react";
 import { ScaleLoader } from "react-spinners";
 import GoogleCalendarIcon from "../assets/google-calendar-logo.png";
@@ -38,13 +39,12 @@ const GoogleCalendarEvents = () => {
 
   const getAuthUrl = async () => {
     const url = await invoke("get_google_auth_url");
-    console.log("Auth URL:", url);
 
     const authWindow = new WebviewWindow("auth", {
       title: "Google Authentication",
       width: 500,
       height: 700,
-      url, // The Google OAuth URL
+      url,
       resizable: false,
     });
     setAuthUrl(url);
@@ -54,8 +54,37 @@ const GoogleCalendarEvents = () => {
   const getAccessToken = async () => {
     const tokenData = await invoke("get_google_tokens", { code });
     setTokens(tokenData);
+    localStorage.setItem("refreshToken", tokenData.refresh_token);
     setAuthUrl("");
   };
+
+  const refreshAccessToken = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) {
+      throw new Error("No refresh token available");
+    }
+
+    try {
+      const newTokenData = await invoke("refresh_google_tokens", {
+        refreshToken,
+      });
+      setTokens(newTokenData);
+      localStorage.setItem("authTokens", JSON.stringify(newTokenData));
+    } catch (error) {
+      console.error("Failed to refresh access token:", error);
+    }
+  };
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const tokens = JSON.parse(localStorage.getItem("authTokens"));
+      if (tokens && tokens.expiry_date && Date.now() > tokens.expiry_date) {
+        await refreshAccessToken();
+      }
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Load events from localStorage on component mount
   useEffect(() => {
@@ -65,12 +94,10 @@ const GoogleCalendarEvents = () => {
     const lastFetch = localStorage.getItem(LAST_FETCH_KEY);
     const now = Date.now();
 
-    // Auto-fetch if the last fetch was more than 12 hours ago
     if (!lastFetch || now - parseInt(lastFetch) > 12 * 60 * 60 * 1000) {
       fetchEvents();
     }
 
-    // Set up automatic refresh every 12 hours
     const interval = setInterval(fetchEvents, 12 * 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -113,7 +140,6 @@ const GoogleCalendarEvents = () => {
 
   const sortedAndFilteredEvents = useMemo(() => {
     const now = new Date();
-    // Sort events by start time
     const sortedEvents = [...events].sort(
       (a, b) => new Date(a.start) - new Date(b.start)
     );
@@ -152,12 +178,21 @@ const GoogleCalendarEvents = () => {
         </div>
         <div className="flex items-center justify-between">
           {tokens && (
-            <button
-              onClick={fetchEvents}
-              className="flex items-center gap-2 text-sm bg-blue-500/20 text-white px-3 py-1 rounded"
-            >
-              <RefreshCw size={14} /> Refresh
-            </button>
+            <div className="flex items-center">
+              <button
+                onClick={getAuthUrl}
+                className="flex items-center gap-2 text-sm bg-pink-300/20 hover:bg-pink-300/40 duration-300 text-white px-3 py-2 rounded-l-md"
+              >
+                <FcGoogle size={16} />
+              </button>
+
+              <button
+                onClick={fetchEvents}
+                className="flex items-center gap-2 text-sm hover:bg-blue-500/40 duration-300 bg-blue-500/20 text-white px-3 py-1.5 rounded-r-md"
+              >
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -342,85 +377,89 @@ const GoogleCalendarEvents = () => {
           <ScaleLoader color="#8dccff" />
         </div>
       )}
+
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          {/* Backdrop */}
+          <div className="absolute inset-0 rounded-3xl bg-black/70 backdrop-blur-sm"></div>
+
+          {/* Modal Container */}
           <div
-            className="backdrop-blur-lg bg-gradient-to-br duration-200 from-indigo-900/20 via-blue-800/20 to-purple-900/20 
-       border border-indigo-700/50 hover:border-indigo-600/60
-        rounded-xl shadow-2xl w-11/12 max-w-lg p-8 text-white"
+            className="relative bg-gradient-to-br from-indigo-900/20 via-blue-800/20 to-purple-900/20 
+      backdrop-blur-lg rounded-xl p-8 w-full max-w-lg border border-indigo-700/50 shadow-2xl shadow-indigo-700/30"
           >
-            <h2 className="text-2xl font-extrabold text-white mb-5">
-              {selectedEvent.summary}
-            </h2>
-            {selectedEvent.start && (
-              <div className="flex items-center justify-between text-md mb-4">
-                <div className="flex items-center gap-2">
-                  <p className="flex items-center gap-2">
-                    <FaCalendarAlt className="mr-2 text-purple-300" />
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedEvent(null)}
+              className="absolute top-2 right-2 px-3 py-1 rounded-lg duration-200 hover:text-purple-400 text-purple-300 transition-all"
+            >
+              ✕
+            </button>
+
+            {/* Decorative Corners */}
+            <div className="absolute top-0 left-0 w-12 h-12 border-l border-t border-purple-500 rounded-tl-lg"></div>
+            <div className="absolute bottom-0 right-0 w-12 h-12 border-r border-b border-purple-500 rounded-br-lg"></div>
+
+            {/* Header */}
+            <div className="mb-6">
+              <h2
+                className="text-2xl font-extrabold text-transparent bg-clip-text 
+          bg-gradient-to-r from-purple-200 to-cyan-400 text-center mb-4"
+              >
+                {selectedEvent.summary}
+              </h2>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-4 text-sm text-gray-300">
+              {/* Date & Time */}
+              {selectedEvent.start && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FaCalendarAlt className="text-purple-300" />
                     {new Date(selectedEvent.start).toLocaleString("en-GB", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
                     })}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {(() => {
-                      const currentDate = new Date();
-                      const eventDate = new Date(selectedEvent.start);
-                      const timeDifference = eventDate - currentDate;
-                      const daysDifference = Math.ceil(
-                        timeDifference / (1000 * 60 * 60 * 24)
-                      );
-
-                      if (daysDifference === 1) {
-                        return "(tomorrow)";
-                      } else if (daysDifference <= 6) {
-                        return `(in ${daysDifference} days)`;
-                      } else if (daysDifference <= 14) {
-                        return "(next week)";
-                      } else {
-                        return `(in ${Math.ceil(daysDifference / 7)} weeks)`;
-                      }
-                    })()}
-                  </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FaClock className="text-purple-300" />
+                    {new Date(selectedEvent.start).toLocaleString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {" - "}
+                    {new Date(selectedEvent.end).toLocaleString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
                 </div>
-                <p className="flex items-center gap-2">
-                  <FaClock className="ml-4 mr-2 text-purple-300" />
-                  {new Date(selectedEvent.start).toLocaleString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  {" - "}
-                  {new Date(selectedEvent.end).toLocaleString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            )}
-            {selectedEvent.description && (
-              <div
-                className="text-gray-300 text-sm mb-4 leading-relaxed"
-                dangerouslySetInnerHTML={{
-                  __html: selectedEvent.description,
-                }}
-              />
-            )}
-            {selectedEvent.location && (
-              <a
-                href={selectedEvent.location}
-                className="text-gray-400 italic mb-4 hover:text-gray-200 duration-200"
-              >
-                {selectedEvent.location}
-              </a>
-            )}
-            <button
-              className="w-full mt-4 px-5 py-3 bg-gradient-to-r from-red-500 via-pink-500 to-red-600 text-white rounded-lg 
-        font-semibold text-lg shadow-md hover:shadow-lg hover:opacity-80 transition duration-200"
-              onClick={() => setSelectedEvent(null)}
-            >
-              Close
-            </button>
+              )}
+
+              {/* Location */}
+              {selectedEvent.location && (
+                <div className="text-cyan-300 flex items-center gap-2">
+                  <FaMapMarkerAlt className="text-cyan-500" />
+                  <a
+                    href={selectedEvent.location}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-cyan-400 transition"
+                  >
+                    {selectedEvent.location}
+                  </a>
+                </div>
+              )}
+
+              {/* Description */}
+              {selectedEvent.description && (
+                <div className="bg-indigo-900/30 p-4 rounded-lg border border-indigo-500/50">
+                  <p>{selectedEvent.description}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

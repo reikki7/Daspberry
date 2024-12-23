@@ -1,15 +1,17 @@
-import React from "react";
-import GoogleCalendarEvents from "../components/GoogleCalendarEvents";
-import LocalEvents from "../components/LocalEvents";
+import React, { lazy, Suspense } from "react";
+
+const LocalEvents = lazy(() => import("../components/LocalEvents"));
+const GoogleCalendarEvents = lazy(() =>
+  import("../components/GoogleCalendarEvents")
+);
+
 const Events = () => {
   return (
-    <div>
-      <div>
+    <div className="flex flex-col gap-6">
+      <Suspense>
         <LocalEvents />
-      </div>
-      <div className="mt-4">
         <GoogleCalendarEvents />
-      </div>
+      </Suspense>
     </div>
   );
 };

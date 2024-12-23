@@ -194,8 +194,6 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         name: user.name,
       }));
 
-      console.log("User details:", userDetails);
-
       setUsers(userDetails);
       saveUserDetailsToLocalStorage(userDetails);
       await cacheUserDetailsViaTauri(userDetails);
@@ -398,7 +396,6 @@ const AsanaTasks = ({ isTaskAvailable }) => {
           // Fallback: Fetch from network if cache misses
           await fetchUserDetails();
         } else {
-          console.log("Using cached user details");
           setUsers(userDetails);
         }
 

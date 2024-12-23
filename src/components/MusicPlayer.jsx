@@ -805,7 +805,10 @@ const MusicPlayer = () => {
               />
 
               {/* Time */}
-              <div className="flex text-[10px] text-white/40 justify-between">
+              <div
+                className="flex text-[10px] text-white/40 justify-between"
+                style={{ userSelect: "none" }}
+              >
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>

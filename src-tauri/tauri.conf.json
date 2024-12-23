@@ -80,7 +80,7 @@
         "transparent": true,
         "decorations": false,
         "fullscreen": false,
-        "height": 980,
+        "height": 1000,
         "resizable": false,
         "width": 1400,
         "titleBarStyle": "Overlay",

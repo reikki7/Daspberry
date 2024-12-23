@@ -24,12 +24,27 @@ const MiniCalendar = () => {
 
   const loadCachedData = async () => {
     const cachedEvents =
-      JSON.parse(localStorage.getItem("cached_events")) || [];
+      JSON.parse(localStorage.getItem("cached_events"))?.map((event) => {
+        const startDateTime = new Date(event.start);
+        const endDateTime = event.end ? new Date(event.end) : null;
+
+        return {
+          ...event,
+          type: "google_event",
+          start: startDateTime.toISOString().split("T")[0],
+          end: endDateTime ? endDateTime.toISOString().split("T")[0] : null,
+          time_start: startDateTime.toTimeString().split(" ")[0].slice(0, 5),
+          time_end: endDateTime
+            ? endDateTime.toTimeString().split(" ")[0].slice(0, 5)
+            : null,
+        };
+      }) || [];
+    console.log(cachedEvents);
+
     const loadedTasks = await invoke("load_local_tasks");
     let loadedAsanaTasks = await invoke("read_asana_tasks_cache");
     const loadedLocalEvents = await invoke("load_local_events");
 
-    // Parse Asana tasks if needed
     try {
       loadedAsanaTasks = JSON.parse(loadedAsanaTasks);
     } catch (error) {
@@ -38,27 +53,35 @@ const MiniCalendar = () => {
     }
 
     const asanaTasksFormatted = Array.isArray(loadedAsanaTasks)
-      ? loadedAsanaTasks.map((task) => ({
-          summary: task.name,
-          start: task.due_on,
-          type: "asana_task",
-        }))
+      ? loadedAsanaTasks
+          .filter((task) => !task.completed)
+          .map((task) => ({
+            summary: task.name,
+            start: task.due_on,
+            type: "asana_task",
+          }))
       : [];
 
     const tasksFormatted =
-      loadedTasks?.map((task) => ({
-        summary: task.title,
-        start: task.date,
-        type: "task",
-      })) || [];
+      loadedTasks
+        ?.filter((task) => !task.completed)
+        .map((task) => ({
+          summary: task.title,
+          start: task.date,
+          type: "task",
+        })) || [];
 
     const eventsFormatted =
       loadedLocalEvents?.map((event) => ({
         summary: event.title,
         start: event.date_start,
         end: event.date_end,
+        time_start: event.time_start,
+        time_end: event.time_end,
         type: "local_event",
       })) || [];
+
+    console.log(eventsFormatted);
 
     setEvents([
       ...cachedEvents,
@@ -69,10 +92,9 @@ const MiniCalendar = () => {
   };
 
   useEffect(() => {
-    loadCachedData(); // Load data initially
+    loadCachedData();
 
     const handleUpdate = () => {
-      console.log("EventBus received 'events_updated', reloading data...");
       loadCachedData();
     };
 
@@ -266,9 +288,21 @@ const MiniCalendar = () => {
                           ? "bg-[#4179f0] hover:bg-opacity-80 duration-300"
                           : item.type === "asana_task"
                           ? "bg-[#fb4261] hover:bg-opacity-80 duration-300"
+                          : item.type === "google_event"
+                          ? "bg-[#f8f011] hover:bg-opacity-80 duration-300"
                           : item.type === "local_event" && item.end
                           ? "bg-[#871fff] hover:bg-opacity-80 duration-300"
                           : "bg-[#b9a8ee] hover:bg-opacity-80 duration-300";
+
+                      // Apply conditional border radius
+                      const borderRadiusClass =
+                        dayEvents.length === 1
+                          ? "rounded-lg" // Single agenda
+                          : itemIndex === 0
+                          ? "rounded-l-lg" // First element
+                          : itemIndex === dayEvents.length - 1
+                          ? "rounded-r-lg" // Last element
+                          : ""; // Middle element
 
                       return (
                         <span
@@ -277,7 +311,7 @@ const MiniCalendar = () => {
                             handleMouseEnter(event, item)
                           }
                           onMouseLeave={handleMouseLeave}
-                          className={`w-full h-full rounded-lg ${itemColor}`}
+                          className={`w-full h-full ${borderRadiusClass} ${itemColor}`}
                         />
                       );
                     })}
@@ -291,8 +325,9 @@ const MiniCalendar = () => {
             <div
               style={{
                 position: "fixed",
-                top: tooltipPosition.y,
-                left: tooltipPosition.x,
+                top: tooltipPosition.y + 60,
+                left: tooltipPosition.x + 3,
+                transform: "translateY(-100%)",
                 background: "rgba(4, 9, 21, 0.8)",
                 color: "#e0f7ff",
                 padding: "8px",
@@ -306,31 +341,67 @@ const MiniCalendar = () => {
                 backdropFilter: "blur(10px)",
                 border: "1px solid rgba(0, 255, 255, 0.2)",
                 fontFamily: "'Orbitron', sans-serif",
-                fontSize: "12px",
+                fontSize: "10px",
               }}
             >
+              {/* Event Title */}
               <div
                 style={{
                   fontWeight: "bold",
+                  fontSize: "12px",
                   color: "#f0faff",
-                  letterSpacing: "0.5px",
+                  marginBottom: "6px",
                 }}
               >
                 {hoveredEvent.summary}
               </div>
+
+              {/* Date and Time */}
               <div
                 style={{
-                  marginTop: "4px",
-                  color: "#89c2ff",
                   fontSize: "10px",
+                  color: "#89c2ff",
                   textTransform: "uppercase",
-                  letterSpacing: "1px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
                 }}
               >
-                {new Date(hoveredEvent.start).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+                <span>
+                  {new Date(hoveredEvent.start).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                  {hoveredEvent.time_start && <> &nbsp;&nbsp;|&nbsp;&nbsp; </>}
+                  <span className="whitespace-nowrap">
+                    {hoveredEvent.time_start && (
+                      <>
+                        <span>
+                          {new Date(
+                            `1970-01-01T${hoveredEvent.time_start}`
+                          ).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })}
+                        </span>
+                      </>
+                    )}
+                    {hoveredEvent.time_end && (
+                      <span>
+                        {" "}
+                        -{" "}
+                        {new Date(
+                          `1970-01-01T${hoveredEvent.time_end}`
+                        ).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        })}
+                      </span>
+                    )}
+                  </span>
+                </span>
               </div>
             </div>
           )}
@@ -340,7 +411,7 @@ const MiniCalendar = () => {
       {/* Separator */}
       <div className="border-t border-white/10 my-3 mt-4" />
       {/* List of events and tasks this month */}
-      <div className="flex flex-col gap-2 mt-2 overflow-y-scroll pr-1 text-white max-h-[125px] rounded-b-xl custom-scrollbar">
+      <div className="flex flex-col gap-2 mt-2 overflow-y-scroll pr-1 text-white h-[140px] max-h-[140px] rounded-b-xl custom-scrollbar">
         {/* Today's Events and Tasks */}
         {currentDate.getMonth() === today.getMonth() &&
           currentDate.getFullYear() === today.getFullYear() && (
@@ -353,7 +424,7 @@ const MiniCalendar = () => {
                         item.type === "task"
                           ? "text-[#00d1ff]"
                           : "text-cyan-400"
-                      } mr-3`}
+                      } mr-3.5`}
                     >
                       •
                     </span>
@@ -397,70 +468,119 @@ const MiniCalendar = () => {
           )}
 
         {/* Events and Tasks for the Displayed Month */}
-        {events
-          .filter((item) => {
+        {(() => {
+          const currentMonthEvents = events.filter((item) => {
             const eventDate = new Date(item.start);
-            const todayString = today
-              .toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
-              .split(",")[0];
-            const eventDateString = eventDate
-              .toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
-              .split(",")[0];
-
-            if (
-              currentDate.getFullYear() === today.getFullYear() &&
-              currentDate.getMonth() === today.getMonth()
-            ) {
-              return (
-                eventDateString !== todayString &&
-                eventDate >= today &&
-                eventDate.getFullYear() === currentDate.getFullYear() &&
-                eventDate.getMonth() === currentDate.getMonth()
-              );
-            }
-
             return (
-              eventDateString !== todayString &&
               eventDate.getFullYear() === currentDate.getFullYear() &&
               eventDate.getMonth() === currentDate.getMonth()
             );
-          })
-          .sort((a, b) => new Date(a.start) - new Date(b.start))
-          .map((item, index) => (
-            <div key={index} className="flex gap-3">
-              <span
-                className={`${
-                  item.type === "task"
-                    ? "text-[#4179f0] text-xl -mt-1" // Regular tasks
-                    : item.type === "asana_task"
-                    ? "text-[#fb4261] text-xl -mt-1" // Asana tasks
-                    : item.summary === "Weekly Huddle"
-                    ? "text-[#ff02e5] text-2xl -mt-[7px]" // Weekly Huddle
-                    : item.type === "local_event" && item.end
-                    ? "text-[#871fff] text-xl -mt-1" // Multi-day events
-                    : item.type === "local_event"
-                    ? "text-[#b9a8ee] text-xl -mt-1" // Single-day events
-                    : "text-[#faff08] text-xl -mt-1" // Other events
-                }`}
-              >
-                •
-              </span>
-              <span className="text-white/80 text-xs">
-                {item.summary}{" "}
-                <span
-                  className="text-[10px] text-gray-200/50 whitespace-nowrap"
-                  style={{ userSelect: "none" }}
-                >
-                  &nbsp;—{" "}
-                  {new Date(item.start).toLocaleDateString("en-US", {
-                    timeZone: "Asia/Jakarta",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              </span>
-            </div>
-          ))}
+          });
+
+          const upcomingEvents = currentMonthEvents
+            .filter((item) => new Date(item.start) >= today)
+            .sort((a, b) => new Date(a.start) - new Date(b.start));
+
+          const pastEvents = currentMonthEvents
+            .filter((item) => new Date(item.start) < today)
+            .sort((b, a) => new Date(b.start) - new Date(a.start));
+
+          const isCurrentMonth =
+            currentDate.getFullYear() === today.getFullYear() &&
+            currentDate.getMonth() === today.getMonth();
+
+          return (
+            <>
+              {/* Upcoming Events */}
+              {upcomingEvents.map((item, index) => (
+                <div key={`upcoming-${index}`} className="flex gap-3">
+                  <span
+                    className={`${
+                      item.type === "task"
+                        ? "text-[#4179f0] text-xl -mt-1" // Regular tasks
+                        : item.type === "asana_task"
+                        ? "text-[#fb4261] text-xl -mt-1" // Asana tasks
+                        : item.summary === "Weekly Huddle"
+                        ? "text-[#ff02e5] text-2xl -mt-[7px]" // Weekly Huddle
+                        : item.type === "google_event"
+                        ? "text-[#f8f011] text-xl -mt-1" // Google events
+                        : item.type === "local_event" && item.end
+                        ? "text-[#871fff] text-xl -mt-1" // Multi-day events
+                        : item.type === "local_event"
+                        ? "text-[#b9a8ee] text-xl -mt-1" // Single-day events
+                        : "text-[#faff08] text-xl -mt-1" // Other events
+                    }`}
+                  >
+                    •
+                  </span>
+                  <span className="text-white/80 text-xs">
+                    {item.summary}{" "}
+                    <span
+                      className="text-[10px] text-gray-200/50 whitespace-nowrap"
+                      style={{ userSelect: "none" }}
+                    >
+                      &nbsp;—{" "}
+                      {new Date(item.start).toLocaleDateString("en-US", {
+                        timeZone: "Asia/Jakarta",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </span>
+                </div>
+              ))}
+
+              {/* Separator for Past Events - Only in Current Month */}
+              {isCurrentMonth && pastEvents.length > 0 && (
+                <div className="text-gray-400 flex items-center justify-center gap-2 text-xs uppercase mb-1">
+                  <hr className="border-yellow-300 border-[0.1px] w-1/6" />
+                  <p className="text-yellow-200">&nbsp;Previous Agenda</p>
+
+                  <hr className="border-yellow-300 border-[0.1px] w-1/6" />
+                </div>
+              )}
+
+              {/* Past Events */}
+              {pastEvents.map((item, index) => (
+                <div key={`past-${index}`} className="flex gap-3">
+                  <span
+                    className={`${
+                      item.type === "task"
+                        ? "text-[#4179f0] text-xl -mt-1" // Regular tasks
+                        : item.type === "asana_task"
+                        ? "text-[#fb4261] text-xl -mt-1" // Asana tasks
+                        : item.summary === "Weekly Huddle"
+                        ? "text-[#ff02e5] text-2xl -mt-[7px]" // Weekly Huddle
+                        : item.type === "google_event"
+                        ? "text-[#f8f011] text-xl -mt-1" // Google events
+                        : item.type === "local_event" && item.end
+                        ? "text-[#871fff] text-xl -mt-1" // Multi-day events
+                        : item.type === "local_event"
+                        ? "text-[#b9a8ee] text-xl -mt-1" // Single-day events
+                        : "text-[#faff08] text-xl -mt-1" // Other events
+                    }`}
+                  >
+                    •
+                  </span>
+                  <span className="text-white/80 text-xs">
+                    {item.summary}{" "}
+                    <span
+                      className="text-[10px] text-gray-200/50 whitespace-nowrap"
+                      style={{ userSelect: "none" }}
+                    >
+                      &nbsp;—{" "}
+                      {new Date(item.start).toLocaleDateString("en-US", {
+                        timeZone: "Asia/Jakarta",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </>
+          );
+        })()}
       </div>
     </div>
   );

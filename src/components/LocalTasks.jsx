@@ -62,7 +62,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       const loadedTasks = await invoke("load_local_tasks");
       if (Array.isArray(loadedTasks)) {
         setTasks(loadedTasks);
-        console.log("Tasks loaded:", loadedTasks);
       }
     } catch (error) {
       console.error("Error loading tasks:", error);
@@ -112,7 +111,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     try {
       await invoke("save_local_tasks", { tasks: updatedTasks });
       eventBus.emit("events_updated");
-      console.log("Tasks saved successfully. Event emitted.");
     } catch (error) {
       console.error("Error saving tasks:", error);
     }
@@ -273,6 +271,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     setEditMode(false);
     setCopied(false);
     setIsModalOpen(false);
+    eventBus.emit("events_updated");
   };
 
   const handleTaskClick = (task) => {

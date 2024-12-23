@@ -16,12 +16,21 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Montserrat";
+  src: url("./assets/fonts/Montserrat-Semibold.ttf") format("truetype");
+}
+
 .font-astrobia {
   font-family: "Astrobia Bold", sans-serif;
 }
 
 .font-roboto {
   font-family: "Roboto", sans-serif;
+}
+
+.font-montserrat {
+  font-family: "Montserrat", sans-serif;
 }
 
 html,
@@ -128,6 +137,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* Firefox specific styles */
 input[type="date"]::-moz-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Firefox specific styles */
+input[type="time"]::-moz-calendar-picker-indicator {
   cursor: pointer;
 }
 
