@@ -710,7 +710,7 @@ const MusicPlayer = () => {
         </div>
 
         {/* Music Player */}
-        <div className="flex flex-col w-full mx-2">
+        <div className="flex flex-col w-full">
           <div className="flex items-center justify-between">
             {/* Track Information */}
             <div className="p-4 h-[101px] flex flex-col justify-center">
@@ -817,12 +817,14 @@ const MusicPlayer = () => {
         </div>
 
         {/* Album Art */}
-        <img
-          onError={() => setAlbumArt(artDefault)}
-          src={albumArt}
-          className="relative z-10 h-[227px] rounded-3xl w-[227px]"
-          alt="Album Art"
-        />
+        <div className="rounded-3xl relative h-[227px] w-[437px] overflow-hidden flex items-center justify-center bg-white">
+          <img
+            onError={() => setAlbumArt(artDefault)}
+            src={albumArt}
+            alt="Album Art"
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
     </div>
   );
