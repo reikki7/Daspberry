@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const CustomDropdown = ({
-  assignees = [], // Default to an empty array
+  assignees = [],
   selectedAssignee,
   setSelectedAssignee,
 }) => {

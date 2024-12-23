@@ -1,7 +1,7 @@
 import React, { useState, lazy, Suspense } from "react";
 
-const LocalTasks = lazy(() => import("../components/LocalTasks"));
-const AsanaTasks = lazy(() => import("../components/AsanaTasks"));
+const LocalTasks = lazy(() => import("../components/tasks/LocalTasks"));
+const AsanaTasks = lazy(() => import("../components/tasks/AsanaTasks"));
 
 const Tasks = () => {
   const [isTaskAvailable, setIsTaskAvailable] = useState(false);

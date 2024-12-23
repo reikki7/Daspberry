@@ -39,7 +39,6 @@ const MiniCalendar = () => {
             : null,
         };
       }) || [];
-    console.log(cachedEvents);
 
     const loadedTasks = await invoke("load_local_tasks");
     let loadedAsanaTasks = await invoke("read_asana_tasks_cache");
@@ -80,8 +79,6 @@ const MiniCalendar = () => {
         time_end: event.time_end,
         type: "local_event",
       })) || [];
-
-    console.log(eventsFormatted);
 
     setEvents([
       ...cachedEvents,

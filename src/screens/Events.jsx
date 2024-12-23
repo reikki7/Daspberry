@@ -1,8 +1,8 @@
 import React, { lazy, Suspense } from "react";
 
-const LocalEvents = lazy(() => import("../components/LocalEvents"));
+const LocalEvents = lazy(() => import("../components/events/LocalEvents"));
 const GoogleCalendarEvents = lazy(() =>
-  import("../components/GoogleCalendarEvents")
+  import("../components/events/GoogleCalendarEvents")
 );
 
 const Events = () => {

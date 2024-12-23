@@ -64,6 +64,11 @@
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
         "timestampUrl": "",
+        "nsis": {
+          "installerIcon": "icons/icon.ico",
+          "sidebarImage": "icons/sidebar.bmp",
+          "compression": "lzma"
+        },
         "wix": {}
       }
     },

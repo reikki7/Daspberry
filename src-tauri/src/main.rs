@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs;
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
 use std::process::Command;
 use tauri::command;
 use std::path::Path;
@@ -11,6 +11,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use std::env;
+use fs2::FileExt;
 
 const REDIRECT_URI: &str = "urn:ietf:wg:oauth:2.0:oob";
 
@@ -588,10 +589,116 @@ fn clear_local_events() -> Result<(), String> {
 
 
 fn main() {
-    dotenv::dotenv().ok(); 
+    // Lock file to enforce a single instance
+    let lock_path = dirs::data_local_dir()
+        .expect("Failed to determine local data directory")
+        .join("my_app.lock");
+
+    // Create the lock file directory if it doesn't exist
+    if let Some(parent) = lock_path.parent() {
+        std::fs::create_dir_all(parent).expect("Failed to create lock file directory");
+    }
+
+    let lock_file = match File::create(&lock_path) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Failed to create lock file: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    match lock_file.try_lock_exclusive() {
+        Ok(_) => {
+            // No other instance is running, continue with application startup
+            run_app();
+        }
+        Err(_) => {
+            // Another instance is running, try to focus it
+            eprintln!("Another instance is already running");
+            std::process::exit(0);
+        }
+    }
+}
+
+fn run_app() {
+    dotenv::dotenv().ok();
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_project_folders, get_music_files, open_folder_in_vscode, get_project_info, cache_github_repos, read_github_repos_cache, clear_github_cache, cache_asana_tasks, read_asana_tasks_cache, cache_asana_user_details, read_asana_user_details_cache, get_google_auth_url, get_google_tokens, fetch_google_calendar_events, handle_oauth_callback, save_local_tasks, load_local_tasks, save_local_events, load_local_events, clear_local_events, get_google_tokens, refresh_google_tokens])
+        .setup(|app| {
+            let app_handle = app.handle();
+            
+            // First, check if the window exists
+            if let Some(existing_window) = app_handle.get_window("main") {
+                // Window exists, focus it and exit
+                if let Err(e) = existing_window.unminimize() {
+                    eprintln!("Error unminimizing window: {}", e);
+                }
+                if let Err(e) = existing_window.set_focus() {
+                    eprintln!("Error focusing window: {}", e);
+                }
+                return Ok(());
+            }
+
+            // Window doesn't exist, create it
+            let window = tauri::WindowBuilder::new(
+                app,
+                "main",
+                tauri::WindowUrl::App("index.html".into()),
+            )
+            .title("My App")
+            .build()?;
+
+            // Handle window cleanup
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                match event {
+                    tauri::WindowEvent::Destroyed => {
+                        // Clean up when window is destroyed
+                        if let Some(data_dir) = dirs::data_local_dir() {
+                            let lock_path = data_dir.join("my_app.lock");
+                            if lock_path.exists() {
+                                let _ = std::fs::remove_file(lock_path);
+                            }
+                        }
+                    }
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        let window = window_clone.clone();
+                        tauri::async_runtime::spawn(async move {
+                            window.close().unwrap_or_else(|e| {
+                                eprintln!("Error closing window: {}", e);
+                            });
+                        });
+                    }
+                    _ => {}
+                }
+            });
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_project_folders,
+            get_music_files,
+            open_folder_in_vscode,
+            get_project_info,
+            cache_github_repos,
+            read_github_repos_cache,
+            clear_github_cache,
+            cache_asana_tasks,
+            read_asana_tasks_cache,
+            cache_asana_user_details,
+            read_asana_user_details_cache,
+            get_google_auth_url,
+            get_google_tokens,
+            fetch_google_calendar_events,
+            handle_oauth_callback,
+            save_local_tasks,
+            load_local_tasks,
+            save_local_events,
+            load_local_events,
+            clear_local_events,
+            refresh_google_tokens
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
