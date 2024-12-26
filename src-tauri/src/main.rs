@@ -13,7 +13,7 @@ use tauri::Manager;
 use std::env;
 use fs2::FileExt;
 
-const REDIRECT_URI: &str = "urn:ietf:wg:oauth:2.0:oob";
+const REDIRECT_URI: &str = "oob";
 
 #[derive(serde::Serialize)]
 struct Folder {
@@ -83,8 +83,9 @@ struct Event {
     date_end: Option<String>,
     time_start: Option<String>,
     time_end: Option<String>,
-    time: Option<String>,
     location: Option<String>,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -94,7 +95,6 @@ struct CreateTaskResponse {
 
 fn get_google_client_id() -> String {
     let client_id = std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID is not set");
-    println!("Using Google Client ID: {}", client_id);
     client_id
 }
 
@@ -541,15 +541,15 @@ fn load_local_tasks() -> Result<Vec<Task>, String> {
 // Local events
 #[command]
 fn save_local_events(events: Vec<Event>) -> Result<(), String> {
-    let events_json = serde_json::to_string(&events)
-        .map_err(|e| format!("Failed to serialize events: {}", e))?;
-
     let cache_path = dirs::data_local_dir()
         .ok_or_else(|| "Failed to get local data directory".to_string())?
         .join("local_events_cache.json");
 
+    let events_json = serde_json::to_string(&events)
+        .map_err(|e| format!("Failed to serialize events: {}", e))?;
+
     fs::write(&cache_path, events_json)
-        .map_err(|e| format!("Failed to write events to file: {}", e))?;
+        .map_err(|e| format!("Failed to write events file: {}", e))?;
 
     Ok(())
 }

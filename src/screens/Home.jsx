@@ -52,7 +52,7 @@ const Clock = () => {
     <div className="relative group select-none">
       <div className="absolute -inset-1 rounded-2xl opacity-0 duration-500" />
       <div
-        className="relative flex flex-col items-center h-36 bg-blue-950/30 mt-1 rounded-2xl px-12 py-2 pb-9 shadow-2xl"
+        className="relative flex flex-col items-center h-36 bg-gray-950/30 mt-1 rounded-2xl px-12 py-2 pb-9 shadow-2xl"
         style={{
           clipPath:
             "path('M 0 0 L 348 0 L 348 9 C 348 41 343 52 330 61 L 243 114 C 226 126 215 129 206 129 L 175 129 L 144 129 C 135 129 123 126 105 113 L 17 61 C 5 52 0 41 0 7 Z')",
@@ -102,6 +102,7 @@ const Home = () => {
         <div
           className="flex w-[250px] flex-col gap-1.5 rounded-3xl overflow-hidden bg-gray-950/20 border border-white/20"
           style={{ userSelect: "none" }}
+          onClick={() => setIsHovered(!isHovered)}
         >
           <img
             src="/main-background.jpg"
@@ -136,16 +137,11 @@ const Home = () => {
             <span className="absolute left-16 -top-2 font-montserrat drop-shadow">
               Made by
             </span>
-            <img
-              src="/signature.png"
-              alt="Signature"
-              onClick={() => setIsHovered(!isHovered)}
-            />
+            <img src="/signature.png" alt="Signature" />
           </div>
         </div>
         <div
           className="flex flex-col w-full duration-300 gap-1 rounded-3xl bg-gray-950/20 border border-white/20 p-6 relative overflow-hidden"
-          onClick={() => setIsHovered(!isHovered)}
           style={{
             clipPath:
               "path('M 0 0 L 224 0 C 237 0 243 0 253 7 L 358 74 C 377 87 458 88 479 74 L 580 6 C 590 0 595 0 605 0 L 845 0 l -1 444 C 844 466 831 473 813 473 l -31 0 C 763 473 758 473 743 489 l -105 126 C 618 638 606 648 582 648 L 0 648 Z')",
@@ -155,7 +151,7 @@ const Home = () => {
           <img
             src="/main-background.jpg"
             alt="Background"
-            className="absolute inset-0 hover:scale-105 w-full h-full object-cover rounded-3xl transition-transform duration-300 ease-in-out"
+            className="absolute inset-0 w-full h-full object-cover rounded-3xl transition-transform duration-300 ease-in-out"
             style={{ userSelect: "none" }}
           />
         </div>

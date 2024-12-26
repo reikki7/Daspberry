@@ -1,4 +1,4 @@
-import React, { memo, useEffect } from "react";
+import React, { memo } from "react";
 import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 
 const LocalTaskList = memo(
@@ -15,51 +15,55 @@ const LocalTaskList = memo(
     return (
       <div className="w-full pb-4">
         {tasks.filter((task) => !task.completed).length === 0 && (
-          <div className="text-white text-center text-md my-3">
+          <div className="text-cyan-400 text-center text-lg my-3 font-light tracking-wider animate-pulse">
             No TODO found. Click "Add TODO" to create a new task.
           </div>
         )}
         <div
-          className={` flex justify-between w-full ${
+          className={`flex justify-between w-full ${
             tasks.filter((task) => !task.completed).length > 0 ? "h-72" : ""
           }`}
         >
-          <div className="">
-            <div className="flex h-full gap-4">
+          <div className="w-full">
+            <div className="flex h-full gap-4 pb-2 scrollbar-hide">
               {tasks.map((task) => (
                 <button
                   key={task.id}
-                  className="relative w-[239px] bg-gradient-to-br border hover:backdrop-blur-md bg-gray-950/30 backdrop-blur-lg p-2 text-left rounded-lg hover:bg-[#c08feb]/20 shadow-lg hover:shadow-xl transition-all border-none outline-none"
+                  className="relative w-[240px] min-w-[240px] bg-gray-950/45 backdrop-blur-xl p-3 text-left rounded-xl transition-all duration-300 group border border-white/5 hover:border-purple-500/30 shadow-lg hover:shadow-cyan-500/10"
                   onClick={() => handleTaskClick(task)}
                 >
+                  {/* Decorative Elements */}
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-tr-xl" />
+                  <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-purple-500/10 to-transparent rounded-bl-xl" />
+
                   {/* Header Section */}
-                  <div className="mx-2 mt-1">
-                    <h3 className="text-white text-wrap line-clamp-3 truncate">
+                  <div className="mx-2 mt-1 relative">
+                    <h3 className="text-white font-light tracking-wide text-wrap line-clamp-3 truncate text-lg">
                       {task.title}
                     </h3>
-                    <div className="flex mt-3 justify-between">
-                      <div className="text-[13px] text-white/70 flex items-center">
-                        <CalendarIcon className="w-4 h-4 mr-2 -mt-0.5 text-white/50" />
+                    <div className="flex mt-3 justify-between items-center">
+                      <div className="text-[12px] text-gray-200/70 flex items-center bg-white/5 px-3 py-1 rounded-full">
+                        <CalendarIcon className="w-4 h-4 mr-2" />
                         {task.date
-                          ? new Date(task.date).toLocaleDateString("en-ID", {
+                          ? new Date(task.date).toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "long",
                             })
-                          : "No due date"}
+                          : "No Due Date"}
                       </div>
                       {new Date(task.date) <
                         new Date(new Date().setHours(0, 0, 0, 0)) &&
                         task.date !== null && (
-                          <div className="bg-red-500/70 px-2 py-1 rounded-full text-xs flex items-center">
+                          <div className="bg-red-500/20 border border-red-500/30 px-3 py-1 rounded-full text-xs flex items-center text-red-300">
                             Overdue
                           </div>
                         )}
                     </div>
-                    <hr className="my-3 border-t border-gray-300/40" />
+                    <hr className="my-3 border-t border-white/10" />
                   </div>
 
                   {/* Task Description */}
-                  <div className="h-full mx-2 overflow-y-auto text-sm text-white/70 text-wrap whitespace-pre-wrap max-h-[170px]">
+                  <div className="h-full mx-2 overflow-y-auto text-xs text-white/70 text-wrap whitespace-pre-wrap max-h-[170px] scrollbar-hide">
                     {task.description}
                   </div>
                 </button>
@@ -68,24 +72,24 @@ const LocalTaskList = memo(
           </div>
         </div>
 
-        {/* Only show up if there are more than 5 incomplete tasks */}
+        {/* Pagination */}
         {totalIncompleteTasks > 5 && (
           <div className="flex items-center justify-center gap-6 mt-5">
             <button
               onClick={goToPreviousPage}
               disabled={currentPage === 1}
-              className="text-sm font-medium transition-colors disabled:opacity-50 disabled:hover:bg-gray-100/0 hover:bg-gray-100 rounded-lg"
+              className="text-cyan-400 p-1 rounded-lg transition-colors disabled:opacity-30 hover:bg-cyan-400/10 disabled:hover:bg-transparent"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={20} />
             </button>
 
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center gap-2">
               {Array.from({ length: totalPages }, (_, index) => (
                 <button
                   onClick={() => setCurrentPage(index + 1)}
                   key={index}
-                  className={`h-2 w-2 rounded-full ${
-                    index + 1 === currentPage ? "bg-teal-500" : "bg-gray-300"
+                  className={`h-1.5 w-6 rounded-full transition-all duration-300 ${
+                    index + 1 === currentPage ? "bg-cyan-400" : "bg-white/20"
                   }`}
                 />
               ))}
@@ -94,9 +98,9 @@ const LocalTaskList = memo(
             <button
               onClick={goToNextPage}
               disabled={currentPage === totalPages}
-              className="text-sm font-medium transition-colors disabled:opacity-50 disabled:hover:bg-gray-100/0 rounded-lg"
+              className="text-cyan-400 p-1 rounded-lg transition-colors disabled:opacity-30 hover:bg-cyan-400/10 disabled:hover:bg-transparent"
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={20} />
             </button>
           </div>
         )}

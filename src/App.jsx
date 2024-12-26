@@ -20,6 +20,8 @@ import VideoWorks from "./screens/VideoWorks";
 import Tasks from "./screens/Tasks";
 import Projects from "./screens/Projects";
 
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 const EmptyHome = () => null;
 
 const AppContent = () => {
@@ -93,7 +95,7 @@ const App = () => {
   }, []);
 
   return (
-    <GoogleOAuthProvider clientId="456183410872-0cg2i4jotv7j9jjgv3qog8q21tq6463a.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={googleClientId}>
       <AuthProvider>
         <Router>
           <AppContent />

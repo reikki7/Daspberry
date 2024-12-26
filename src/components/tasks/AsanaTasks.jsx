@@ -15,6 +15,12 @@ import "react-toastify/dist/ReactToastify.css";
 import { debounce } from "lodash";
 import eventBus from "../../utils/eventBus";
 
+const AsanaTaskList = lazy(() => import("../tasks/AsanaTaskList"));
+const SelectedAsanaTaskModal = lazy(() =>
+  import("../tasks/SelectedAsanaTaskModal")
+);
+const NewAsanaTaskModal = lazy(() => import("../tasks/NewAsanaTaskModal"));
+
 const AsanaTasks = ({ isTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,18 +32,6 @@ const AsanaTasks = ({ isTaskAvailable }) => {
   const [fetchStrategy, setFetchStrategy] = useState("cache");
   const [editMode, setEditMode] = useState(false);
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
-  const [assigneeList, setAssigneeList] = useState([]);
-  const [newTask, setNewTask] = useState({
-    name: "",
-    notes: "",
-    due_on: "",
-  });
-
-  const AsanaTaskList = lazy(() => import("../tasks/AsanaTaskList"));
-  const SelectedAsanaTaskModal = lazy(() =>
-    import("../tasks/SelectedAsanaTaskModal")
-  );
-  const NewAsanaTaskModal = lazy(() => import("../tasks/NewAsanaTaskModal"));
 
   const dateInputRef = useRef(null);
 
@@ -52,8 +46,6 @@ const AsanaTasks = ({ isTaskAvailable }) => {
   const CACHE_USER_EXPIRY_KEY = "asana_user_details_cache_expiry";
   const CACHE_USER_DURATION = 1000 * 60 * 60 * 24 * 7;
 
-  const defaultAssignee = import.meta.env.VITE_ASANA_DEFAULT_ASSIGNEE;
-
   const options = useMemo(
     () => ({
       method: "GET",
@@ -64,21 +56,15 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     }),
     [asanaApiKey]
   );
-
   const handleContainerClick = () => {
     if (dateInputRef.current) {
-      dateInputRef.current.showPicker?.();
-      dateInputRef.current.click();
+      if (dateInputRef.current.showPicker) {
+        dateInputRef.current.showPicker();
+      } else {
+        console.warn("showPicker is not supported in this browser.");
+      }
     }
   };
-
-  useEffect(() => {
-    setAssigneeList(users);
-  }, [users]);
-
-  const [selectedAssignee, setSelectedAssignee] = useState(
-    defaultAssignee || ""
-  );
 
   const debouncedSaveTasks = useCallback(
     debounce((data) => {
@@ -294,61 +280,6 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     }
   };
 
-  const addTask = async (assignee) => {
-    toast.dismiss();
-    try {
-      if (!newTask.name.trim()) {
-        toast.error("Task title cannot be empty.", {
-          position: "top-center",
-          closeOnClick: true,
-          theme: "dark",
-          toastId: "task-title-empty",
-        });
-        return;
-      }
-
-      const taskData = {
-        data: {
-          name: newTask.name,
-          notes: newTask.notes || "",
-          due_on: newTask.due_on || null,
-          workspace: asanaWorkspaceGid,
-          assignee: assignee,
-        },
-      };
-
-      const response = await fetch(
-        "https://app.asana.com/api/1.0/tasks?opt_fields=name,due_on,notes",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${asanaApiKey}`,
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(taskData),
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setTasks((prevTasks) => {
-          const updatedTasks = [...prevTasks, result.data];
-          updateTasksCache(updatedTasks);
-          eventBus.emit("events_updated");
-          return updatedTasks;
-        });
-      } else {
-        const errorData = await response.json();
-        console.error("Failed to create task:", errorData);
-        alert("Failed to create task. Check console for details.");
-      }
-    } catch (err) {
-      console.error("Error creating task:", err);
-      alert("An error occurred while creating the task.");
-    }
-  };
-
   const fetchTaskDetails = useCallback(
     async (taskGids) => {
       try {
@@ -439,11 +370,6 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     },
     [options, fetchTaskDetails]
   );
-
-  // Fetch tasks on initial load
-  useEffect(() => {
-    fetchTasks(fetchStrategy);
-  }, [fetchStrategy, fetchTasks]);
 
   // Update/Modify Task
   const updateTask = useCallback(
@@ -539,18 +465,10 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     }
   };
 
-  const clearAllFields = () => {
-    setNewTask({ name: "", notes: "", due_on: "" });
-    setNewTaskModalOpen(false);
-    setSelectedTask(null);
-    toast.dismiss();
-  };
-
-  const closeNewTaskModal = () => {
-    setNewTaskModalOpen(false);
-    setNewTask({ name: "", notes: "", due_on: "" });
-    toast.dismiss();
-  };
+  // Fetch tasks on initial load
+  useEffect(() => {
+    fetchTasks(fetchStrategy);
+  }, [fetchStrategy, fetchTasks]);
 
   if (error)
     return (
@@ -560,7 +478,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     );
 
   return (
-    <div className="mb-4 flex flex-col w-full overflow-y-auto">
+    <div className="mb-4 flex flex-col w-full h-[510px] overflow-y-auto">
       <ToastContainer
         id="toast-container"
         position="top-center"
@@ -574,27 +492,33 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         transition={Slide}
         pauseOnHover
       />
-      <div className="flex justify-between items-center mb-4 mt-1">
-        <div className="flex items-center gap-3">
-          <img src={AsanaLogo} alt="Asana Logo" className="w-32 h-auto" />
-          <span className="bg-white/20 text-white px-3 py-1 rounded-full text-sm">
-            {tasks.length} Active
+      <div className="flex items-center justify-between mb-4 mt-1">
+        {/* Logo and Task Count */}
+        <div className="flex items-center gap-4">
+          <img src={AsanaLogo} alt="Asana Logo" className="w-24 h-auto" />
+          <span className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-white px-3.5 py-1.5 rounded-md shadow-sm text-sm font-medium">
+            {tasks.length} Tasks
           </span>
         </div>
-        <div className="flex">
+
+        {/* Refresh and Add Task Buttons */}
+        <div className="flex gap-2">
           <button
             onClick={() => setFetchStrategy("network")}
-            className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-purple-500/20 duration-200 overflow-hidden text-white px-3 py-1.5 rounded-l-md"
+            className="flex group items-center gap-2 px-4 py-1.5 bg-blue-500/20 duration-300 text-white rounded-md shadow-sm hover:shadow-md hover:bg-blue-500/30 text-sm font-medium"
           >
-            <RefreshCw size={14} />
-            <p className="-scroll mt-0.5">Refresh</p>
+            <RefreshCw
+              size={16}
+              className="group-hover:rotate-180 duration-300"
+            />
+            <span>Refresh</span>
           </button>
           <button
             onClick={() => setNewTaskModalOpen(true)}
-            className="flex items-center gap-2 text-sm bg-blue-500/20 hover:bg-purple-500/20 duration-200 overflow-hidden text-white px-3 py-1.5 rounded-r-md"
+            className="flex items-center gap-2 px-4 py-1.5 bg-purple-500/20 text-white rounded-md shadow-sm hover:shadow-md hover:bg-purple-500/30 duration-300 text-sm font-medium"
           >
-            <PlusCircle size={14} />
-            <p className="mt-0.5">Add Task</p>
+            <PlusCircle size={16} />
+            <span>Add Task</span>
           </button>
         </div>
       </div>
@@ -641,17 +565,13 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         {/* New Task Modal */}
         {newTaskModalOpen && (
           <NewAsanaTaskModal
-            newTask={newTask}
-            setNewTask={setNewTask}
-            clearAllFields={clearAllFields}
             handleContainerClick={handleContainerClick}
             dateInputRef={dateInputRef}
             setNewTaskModalOpen={setNewTaskModalOpen}
-            assigneeList={assigneeList}
-            selectedAssignee={selectedAssignee}
-            setSelectedAssignee={setSelectedAssignee}
-            defaultAssignee={defaultAssignee}
-            addTask={addTask}
+            users={users}
+            updateTasksCache={updateTasksCache}
+            setTasks={setTasks}
+            fetchTasks={fetchTasks}
           />
         )}
       </Suspense>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { invoke, convertFileSrc } from "@tauri-apps/api/tauri";
 import { parseBlob } from "music-metadata";
 import {
@@ -44,7 +45,11 @@ const MusicPlayer = () => {
   const currentTrackIndexRef = useRef(currentTrackIndex);
   const volumeSliderRef = useRef(null);
 
-  const metadataCache = new Map(); // In-memory metadata cache
+  // In-memory metadata cache
+  const metadataCache = new Map();
+
+  const location = useLocation();
+  const isHomeActive = location.pathname === "/";
 
   // Play a random track on initial load
   useEffect(() => {
@@ -110,6 +115,7 @@ const MusicPlayer = () => {
   // Keyboard Shortcuts Handler (Consolidated Effect)
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (!isHomeActive) return;
       const { currentSound, isLoopingSingle, currentTrackIndex } =
         playerStateRef.current;
 
@@ -220,7 +226,7 @@ const MusicPlayer = () => {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [musicMenu, isPlaying, currentSound]);
+  }, [musicMenu, isHomeActive, isPlaying, currentSound]);
 
   // Load music files from the system
   const loadMusicFiles = async () => {

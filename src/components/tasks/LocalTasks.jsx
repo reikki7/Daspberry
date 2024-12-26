@@ -25,6 +25,10 @@ import eventBus from "../../utils/eventBus";
 
 import LocalTaskList from "./LocalTaskList";
 
+const SelectedLocalTaskModal = lazy(() => import("./SelectedLocalTaskModal"));
+const CompletedLocalTaskModal = lazy(() => import("./CompletedLocalTaskModal"));
+const NewLocalTaskModal = lazy(() => import("./NewLocalTaskModal"));
+
 const LocalTasks = ({ setIsTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -43,14 +47,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     description: "",
     completed: false,
   });
-
-  const SelectedLocalTaskModal = React.lazy(() =>
-    import("./SelectedLocalTaskModal")
-  );
-  const NewLocalTaskModal = React.lazy(() => import("./NewLocalTaskModal"));
-  const CompletedLocalTaskModal = React.lazy(() =>
-    import("./CompletedLocalTaskModal")
-  );
 
   const dateInputRef = useRef(null);
 
@@ -86,8 +82,11 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
   const handleContainerClick = () => {
     if (dateInputRef.current) {
-      dateInputRef.current.showPicker?.();
-      dateInputRef.current.click();
+      if (dateInputRef.current.showPicker) {
+        dateInputRef.current.showPicker();
+      } else {
+        console.warn("showPicker is not supported in this browser.");
+      }
     }
   };
 
@@ -394,29 +393,39 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
   return (
     <div className="w-full">
-      <div className="flex justify-between mb-2 items-center">
-        <h1 className="text-2xl flex gap-1 items-center">
-          <ClipboardPenLine />
-          TODO
-        </h1>
-        <div className="flex">
+      <div className="flex justify-between mb-4 items-center">
+        {/* Title and TODO Count */}
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl flex gap-2 items-center font-medium text-white">
+            <ClipboardPenLine size={20} />
+            <span className="tracking-wide">TODO</span>
+          </h1>
+          <span className="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-white px-3 py-1.5 rounded-md shadow-sm text-sm font-medium">
+            {totalIncompleteTasks} Tasks
+          </span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex rounded-lg overflow-hidden">
+          {/* Completed Tasks Button */}
           <button
             onClick={() => setCompletedTasksModalOpen(true)}
-            className="text-white text-sm px-3 py-1 rounded-l-md bg-green-500/20 hover:bg-green-500/30 duration-300"
+            className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/30 text-green-200 shadow-sm hover:shadow-md hover:bg-emerald-500/50 transition-all duration-300 text-sm font-medium"
           >
-            <BookCheck size={14} />
+            <BookCheck size={16} />
           </button>
 
           {/* Add Task Button */}
           <button
             onClick={() => setNewTaskModalOpen(true)}
-            className="flex items-center gap-2 text-sm overflow-hidden bg-blue-500/20 hover:bg-purple-500/20 duration-300 text-white px-3 py-1 rounded-r-md"
+            className="flex items-center gap-2 px-4 py-1.5 bg-purple-500/20 text-white shadow-sm hover:shadow-md hover:bg-purple-500/40 transition-all duration-300 text-sm font-medium"
           >
-            <PlusCircle size={14} />
-            <p className="mt-0.5">Add Task</p>
+            <PlusCircle size={16} />
+            <span>Add Task</span>
           </button>
         </div>
       </div>
+
       <LocalTaskList
         tasks={currentTasks}
         handleTaskClick={handleTaskClick}
@@ -434,17 +443,16 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
           <SelectedLocalTaskModal
             selectedTask={selectedTask}
             setSelectedTask={setSelectedTask}
-            taskIsComplete={taskIsComplete}
-            setTaskIsComplete={setTaskIsComplete}
-            errorMessage={errorMessage}
-            setErrorMessage={setErrorMessage}
-            editMode={editMode}
-            setEditMode={setEditMode}
             handleTitleChange={handleTitleChange}
             handleUpdateTask={handleUpdateTask}
-            handleDeleteTask={handleDeleteTask}
-            clearAllFields={clearAllFields}
             closeNewTaskModal={closeNewTaskModal}
+            errorMessage={errorMessage}
+            editMode={editMode}
+            setEditMode={setEditMode}
+            handleContainerClick={handleContainerClick}
+            dateInputRef={dateInputRef}
+            handleDeleteTask={handleDeleteTask}
+            taskIsComplete={taskIsComplete}
             handleTaskComplete={handleTaskComplete}
             processTaskDescription={processTaskDescription}
           />

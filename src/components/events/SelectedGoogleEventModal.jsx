@@ -4,72 +4,75 @@ const SelectedGoogleEventModal = ({ selectedEvent, setSelectedEvent }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       {/* Backdrop */}
-      <div className="absolute inset-0 rounded-3xl bg-black/70 backdrop-blur-sm"></div>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-3xl"></div>
 
       {/* Modal Container */}
       <div
-        className="relative bg-gradient-to-br from-indigo-900/20 via-blue-800/20 to-purple-900/20 
-          backdrop-blur-lg rounded-xl p-8 w-full max-w-lg border border-indigo-700/50 shadow-2xl shadow-indigo-700/30"
+        data-tauri-drag-region
+        className="relative bg-black/70 rounded-3xl border border-white/10 shadow-2xl p-8 w-full max-w-xl"
       >
         {/* Close Button */}
         <button
           onClick={() => setSelectedEvent(null)}
-          className="absolute top-2 right-2 px-3 py-1 rounded-lg duration-200 hover:text-purple-400 text-purple-300 transition-all"
+          className="px-3 py-1 absolute top-3 right-3 rounded-full hover:rotate-90 text-white/60 hover:text-white duration-300"
         >
           ✕
         </button>
 
-        {/* Decorative Corners */}
-        <div className="absolute top-0 left-0 w-12 h-12 border-l border-t border-purple-500 rounded-tl-lg"></div>
-        <div className="absolute bottom-0 right-0 w-12 h-12 border-r border-b border-purple-500 rounded-br-lg"></div>
-
         {/* Header */}
-        <div className="mb-6">
-          <h2
-            className="text-2xl font-extrabold text-transparent bg-clip-text 
-              bg-gradient-to-r from-purple-200 to-cyan-400 text-center mb-4"
-          >
+        <div className="mb-6 text-center">
+          <h2 className="text-2xl font-bold text-white">
             {selectedEvent.summary}
           </h2>
         </div>
 
-        {/* Details */}
-        <div className="space-y-4 text-sm text-gray-300">
+        {/* Event Details */}
+        <div className="space-y-6 text-sm text-white/70">
           {/* Date & Time */}
           {selectedEvent.start && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FaCalendarAlt className="text-purple-300" />
-                {new Date(selectedEvent.start).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
+            <div className="flex gap-2">
+              <div className="w-fit">
+                <span className="flex items-center gap-2 bg-white/5 px-5 py-2 rounded-md">
+                  <FaCalendarAlt className="text-blue-400 -mt-0.5" />
+                  <span>
+                    {new Date(selectedEvent.start).toLocaleString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <FaClock className="text-purple-300" />
-                {new Date(selectedEvent.start).toLocaleString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                {" - "}
-                {new Date(selectedEvent.end).toLocaleString("en-GB", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+              <div>
+                <span className="inline-flex items-center gap-2 bg-white/5 px-5 py-2 rounded-md">
+                  <FaClock className="text-blue-400 -mt-0.5" />
+                  <span>
+                    {new Date(selectedEvent.start).toLocaleString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  {" - "}
+                  <span>
+                    {new Date(selectedEvent.end).toLocaleString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </span>
               </div>
             </div>
           )}
 
           {/* Location */}
           {selectedEvent.location && (
-            <div className="text-cyan-300 flex items-center gap-2">
-              <FaMapMarkerAlt className="text-cyan-500" />
+            <div className="flex items-center gap-2 px-2 py-1 rounded-md">
+              <FaMapMarkerAlt className="text-purple-400/80 -mt-0.5" />
               <a
                 href={selectedEvent.location}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-cyan-400 transition"
+                className="text-white/70 hover:text-white transition duration-300"
               >
                 {selectedEvent.location}
               </a>
@@ -78,8 +81,10 @@ const SelectedGoogleEventModal = ({ selectedEvent, setSelectedEvent }) => {
 
           {/* Description */}
           {selectedEvent.description && (
-            <div className="bg-indigo-900/30 p-4 rounded-lg border border-indigo-500/50">
-              <p>{selectedEvent.description}</p>
+            <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700/50 shadow-md">
+              <p className="text-white/70 leading-relaxed">
+                {selectedEvent.description}
+              </p>
             </div>
           )}
         </div>

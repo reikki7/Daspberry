@@ -6,25 +6,29 @@ const GoogleCalendarEventCards = ({
   formatEventTime,
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
       {sortedAndFilteredEvents.map((event, index) => (
         <button
           key={index}
-          className="flex flex-col bg-gradient-to-br from-gray-900/40 via-gray-800/45 to-gray-900/40  
-          rounded-xl border border-gray-700/50 hover:border-gray-600/50
-          shadow-lg hover:shadow-xl transition-all duration-300
-          backdrop-blur-sm hover:backdrop-blur-md h-[320px]"
+          className="flex flex-col bg-gray-950/40  
+        rounded-2xl 
+        shadow-lg hover:shadow-cyan-600/40 duration-300
+        backdrop-blur-md hover:backdrop-blur-lg h-[320px] overflow-hidden"
           type="button"
           onClick={() => setSelectedEvent(event)}
         >
           {/* Event Header */}
-          <div className="p-4 border-b w-full text-left border-gray-700/50">
+          <div className="p-4 border-b-2 w-full border-white/10">
             <div className="flex justify-between items-start gap-2 mb-2">
-              <h3 className="text-lg font-bold text-cyan-300 line-clamp-2">
+              <h3
+                className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r 
+            from-cyan-200 to-white
+            transition-all duration-300 line-clamp-2"
+              >
                 {event.summary}
               </h3>
               {event.start && (
-                <span className="text-xs px-2 py-1 bg-gray-800 rounded-full text-gray-300 whitespace-nowrap">
+                <span className="text-xs px-3 py-1 bg-gray-950/30 rounded-full text-white whitespace-nowrap shadow-md">
                   {formatEventTime(new Date(event.start))}
                 </span>
               )}
@@ -33,76 +37,26 @@ const GoogleCalendarEventCards = ({
 
           {/* Event Body */}
           <div className="flex-1 p-4 w-full text-left overflow-y-auto">
-            <div className="text-sm text-gray-300 mb-2">
+            <div className="text-sm text-white">
               {event.start && (
-                <div className="mb-1 flex flex-col">
+                <div className="mb-3 flex flex-col">
                   <div className="flex items-center gap-2">
-                    <FaCalendarAlt className="text-purple-200 mr-1" />
-                    {new Date(event.start).toLocaleString("en-GB", {
+                    <FaCalendarAlt className="text-white -mt-0.5" />
+                    {new Date(event.start).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
                     })}
-                    <p className="text-xs text-gray-400">
-                      {(() => {
-                        const now = new Date();
-                        const timeDifference = new Date(event.start) - now;
-
-                        if (timeDifference < 0) return "(event has passed)";
-
-                        const yearsDifference = Math.floor(
-                          timeDifference / (1000 * 60 * 60 * 24 * 365.25)
-                        );
-                        const monthsDifference = Math.floor(
-                          timeDifference / (1000 * 60 * 60 * 24 * 30.44)
-                        );
-                        const daysDifference = Math.floor(
-                          timeDifference / (1000 * 60 * 60 * 24)
-                        );
-                        const hoursDifference = Math.floor(
-                          (timeDifference % (1000 * 60 * 60 * 24)) /
-                            (1000 * 60 * 60)
-                        );
-                        const minutesDifference = Math.floor(
-                          (timeDifference % (1000 * 60 * 60)) / (1000 * 60)
-                        );
-
-                        switch (true) {
-                          case yearsDifference > 0:
-                            return `(in ${yearsDifference} ${
-                              yearsDifference === 1 ? "year" : "years"
-                            })`;
-                          case monthsDifference > 0:
-                            return `(in ${monthsDifference} ${
-                              monthsDifference === 1 ? "month" : "months"
-                            })`;
-                          case daysDifference > 14:
-                            return `(in ${Math.ceil(
-                              daysDifference / 7
-                            )} weeks)`;
-                          case daysDifference > 6:
-                            return "(next week)";
-                          case daysDifference > 1:
-                            return `(in ${daysDifference} days)`;
-                          case daysDifference === 1:
-                            return "(tomorrow)";
-                          case hoursDifference > 0:
-                            return `(in ${hoursDifference} hours)`;
-                          default:
-                            return `(in ${minutesDifference} minutes)`;
-                        }
-                      })()}
-                    </p>
                   </div>
 
-                  <div className="flex items-center">
-                    <FaClock className="text-purple-200 mr-3" />
-                    {new Date(event.start).toLocaleString("en-GB", {
+                  <div className="flex items-center mt-2">
+                    <FaClock className="text-white mr-2 -mt-0.5" />
+                    {new Date(event.start).toLocaleTimeString("en-GB", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}{" "}
                     -{" "}
-                    {new Date(event.end).toLocaleString("en-GB", {
+                    {new Date(event.end).toLocaleTimeString("en-GB", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
@@ -111,7 +65,7 @@ const GoogleCalendarEventCards = ({
               )}
               {event.description && (
                 <div
-                  className="line-clamp-3 text-gray-400 mt-2 "
+                  className="line-clamp-3 text-gray-400 mt-2"
                   dangerouslySetInnerHTML={{ __html: event.description }}
                 />
               )}
@@ -119,18 +73,25 @@ const GoogleCalendarEventCards = ({
           </div>
 
           {/* Event Footer */}
-          <div className="p-4 border-t w-full border-gray-700/50">
+          <div className="p-4 w-full">
             {event.location ? (
-              <a
-                href={event.location}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="w-full flex justify-center items-center px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 
-                text-cyan-400 rounded-lg font-medium
-                transition-colors duration-200 hover:text-cyan-300"
-              >
-                Join Meeting
-              </a>
+              <div className="relative w-full max-w-xs group">
+                {/* Base gradient - always visible */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-purple-500/30 rounded-xl transition-opacity duration-300" />
+
+                {/* Hover gradient - opacity controlled by group-hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/50 to-purple-500/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                {/* Button content */}
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="relative w-full flex justify-center items-center px-4 py-2 text-white rounded-xl font-medium shadow-md hover:shadow-lg transition-shadow duration-300"
+                >
+                  Join Meeting
+                </a>
+              </div>
             ) : (
               <span className="block text-center text-sm text-gray-400">
                 No meeting link

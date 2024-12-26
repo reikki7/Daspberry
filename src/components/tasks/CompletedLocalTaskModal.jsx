@@ -1,7 +1,7 @@
 import {
-  CalendarCheck,
-  CalendarIcon,
   ClipboardCheck,
+  CalendarIcon,
+  CalendarCheck,
   BookX,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -13,65 +13,61 @@ const CompletedLocalTaskModal = ({
   processTaskDescription,
 }) => {
   return (
-    <div className="fixed rounded-3xl inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 px-4 py-8">
-      <div className="bg-gray-950/60 overflow-hidden rounded-lg max-w-4xl w-full max-h-full flex flex-col">
+    <div className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-sm bg-black/60 flex items-center justify-center z-50 px-4 py-8">
+      <div className="bg-gray-950/80 rounded-2xl overflow-hidden max-w-4xl w-full max-h-full flex flex-col border border-white/10 shadow-2xl">
         <div
           data-tauri-drag-region
-          className="p-4 text-white relative flex justify-between items-center"
+          className="p-5 text-white relative"
           style={{
             background:
-              "linear-gradient(to right, rgb(248, 103, 240, 0.2), rgba(0, 128, 255, 0.2), rgba(0, 255, 255, 0.2)",
+              "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(168,85,247,0.1) 100%)",
           }}
         >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-bl-full" />
           <div className="flex items-center gap-1">
-            <ClipboardCheck className="w-8 h-auto mr-2" />
-            <h2 className="text-xl font-semibold">Completed Tasks</h2>
+            <ClipboardCheck className="w-7 h-auto mr-3 text-white" />
+            <h2 className="text-xl font-light tracking-wide truncate">
+              Completed Tasks
+            </h2>
           </div>
           <button
-            className="text-center p-2 duration-100 rounded-full text-white text-2xl font-bold hover:text-gray-300 focus:outline-none"
+            className="absolute top-3 right-4 text-center p-2 rounded-full text-white text-2xl hover:rotate-90 duration-300 focus:outline-none"
             onClick={() => setCompletedTasksModalOpen(false)}
+            style={{ userSelect: "none" }}
           >
             &times;
           </button>
         </div>
 
         {/* List Completed tasks */}
-        <div className="p-6 overflow-y-auto h-[800px] custom-scrollbar">
+        <div className="p-6 overflow-y-auto h-[800px] scrollbar-hide">
           {tasks &&
             tasks
               .filter((task) => task.completed)
               .map((task) => (
                 <div
                   key={task.id}
-                  className="bg-gray-800/20 p-4 rounded-lg mb-4"
+                  className="bg-gray-900/60 p-4 rounded-lg mb-4  border border-gray-700/50 
+                hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-400/30 transition-all duration-300"
                 >
                   <div className="flex justify-between items-center">
-                    <h3 className="font-semibold text-white line-clamp-2 truncate">
+                    <h3 className="font-light tracking-wide text-white truncate">
                       {task.title}
                     </h3>
 
-                    {/* incomplete button */}
+                    {/* Incomplete button */}
                     <button
                       onClick={() => handleTaskComplete(task.id, false)}
-                      className="border px-3 py-1 border-red-600/70 hover:text-red-600 hover:border-red-600 rounded text-sm duration-200 flex items-center gap-1"
+                      className="text-red-400 bg-red-500/10 border border-red-500/20 p-2 hover:border-red-500/40 rounded-xl transition-all duration-300 backdrop-blur-xl hover:bg-red-500/20 text-sm flex items-center gap-1"
                     >
                       <BookX size={17} />
                       Mark as Incomplete
                     </button>
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-4">
-                      {new Date(task.date) < new Date() &&
-                        task.date !== null && (
-                          <div className="bg-red-500/70 -ml-2 px-2 py-1 rounded-full text-xs flex items-center">
-                            Overdue
-                          </div>
-                        )}
-                    </div>
-                  </div>
 
-                  <div className="text-[13px] text-white/70 flex items-center mb-3">
-                    <CalendarIcon className="w-4 h-4 mr-2 -mt-0.5 text-white/50" />
+                  {/* Task Date */}
+                  <div className="text-[13px] text-white flex items-center my-2">
+                    <CalendarIcon className="w-4 h-4 mr-2 text-cyan-400" />
                     {task.date
                       ? new Date(task.date).toLocaleDateString("en-US", {
                           day: "2-digit",
@@ -82,8 +78,8 @@ const CompletedLocalTaskModal = ({
                   </div>
 
                   {/* Completed On Date */}
-                  <div className="text-[13px] text-white/70 flex items-center mb-3">
-                    <CalendarCheck className="w-4 h-4 mr-2 -mt-0.5 text-white/50" />
+                  <div className="text-[13px] text-white flex items-center mb-4">
+                    <CalendarCheck className="w-4 h-4 mr-2 text-cyan-400" />
                     {task.completed_on ? (
                       <>
                         {new Date(task.completed_on).toLocaleDateString(
@@ -96,20 +92,23 @@ const CompletedLocalTaskModal = ({
                             year: "numeric",
                           }
                         )}
-                        {" — ("}
-                        {formatDistanceToNow(new Date(task.completed_on), {
-                          addSuffix: true,
-                        })}
-                        {")"}
+                        <span className="text-gray-400 ml-1.5">
+                          {" — ("}
+
+                          {formatDistanceToNow(new Date(task.completed_on), {
+                            addSuffix: true,
+                          })}
+                          {")"}
+                        </span>
                       </>
                     ) : (
                       "No completion date"
                     )}
                   </div>
 
-                  <hr className="border-t border-gray-600 my-4" />
+                  <hr className="border-t border-white/20 my-4" />
 
-                  <div className="text-sm text-white/70 mt-2 line-clamp-3 text-wrap whitespace-pre-wrap">
+                  <div className="text-sm text-white mt-2 whitespace-pre-wrap">
                     {processTaskDescription(task.description)}
                   </div>
                 </div>

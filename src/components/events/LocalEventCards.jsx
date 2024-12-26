@@ -8,6 +8,42 @@ const LocalEventCards = ({
   getTitleSize,
   getTimeRemainingLabel,
 }) => {
+  const calculateTimeRemainingLabel = (event) => {
+    const now = new Date();
+    const startDateTime = new Date(
+      `${event.date_start}T${event.time_start || "00:00"}`
+    );
+
+    // Adjust time difference by setting the time to midnight for accurate day calculation
+    const startDateMidnight = new Date(
+      startDateTime.getFullYear(),
+      startDateTime.getMonth(),
+      startDateTime.getDate()
+    );
+    const nowMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    const difference = startDateMidnight - nowMidnight;
+
+    if (difference <= 0) return "";
+
+    const days = Math.ceil(difference / (1000 * 60 * 60 * 24));
+    const months = Math.floor(days / 30);
+    const weeks = Math.floor(days / 7);
+    const remainingDays = days % 7;
+
+    if (months > 0) {
+      return `in ${months} month${months > 1 ? "s" : ""}`;
+    } else if (weeks > 0) {
+      return `in ${weeks}w ${remainingDays}d`;
+    } else {
+      return `in ${days} day${days > 1 ? "s" : ""}`;
+    }
+  };
+
   return (
     <div
       className={`grid grid-cols-1 ${containerHeight} w-[1240px] rounded-xl md:grid-cols-2 lg:grid-cols-4 gap-6`}
@@ -30,7 +66,7 @@ const LocalEventCards = ({
           <button
             key={event.id}
             className="relative w-full max-w-md mx-auto group overflow-hidden 
-        rounded-2xl border border-transparent hover:border-cyan-600/50 
+        rounded-2xl 
         bg-gray-950/40
         hover:scale-[1.02] transition-transform duration-300 
         shadow-2xl shadow-black/20"
@@ -59,8 +95,8 @@ const LocalEventCards = ({
 
             {/* Time Remaining Label */}
             {!isOngoing(event) && (
-              <div className="absolute top-2 right-2 bg-cyan-600/30 text-cyan-50 px-2 py-1 rounded-md text-xs">
-                {getTimeRemainingLabel(event)}
+              <div className="absolute top-2 right-2 bg-gray-950/30 text-cyan-50 px-3 rounded-full py-1 text-xs">
+                {calculateTimeRemainingLabel(event)}
               </div>
             )}
 
@@ -80,8 +116,8 @@ const LocalEventCards = ({
 
                 {/* Location */}
                 {event.location && (
-                  <div className="text-xs text-cyan-300 flex items-center gap-1.5">
-                    <MapPin size={12} className="text-cyan-500" />
+                  <div className="text-xs text-gray-200 flex items-center gap-1.5">
+                    <MapPin size={12} />
                     <span title={event.location}>
                       {event.location.length > 27
                         ? `${event.location.slice(0, 27)}...`
@@ -127,18 +163,18 @@ const LocalEventCards = ({
               {event.date_start && (
                 <div
                   className="flex flex-col text-center 
-                  bg-gray-950/20 border border-cyan-500/30 
+                  bg-gray-950/20 border border-white/30 
                   rounded-xl overflow-hidden w-12 min-w-[3rem] 
-                  items-center text-white shadow-lg date-card"
+                  items-center text-white shadow-lg "
                 >
-                  <div className="bg-cyan-600/30 w-full py-1 text-xs uppercase tracking-wider">
+                  <div className="bg-gray-950/30 w-full border-b-2 border-white/10 py-1 text-xs uppercase tracking-wider">
                     {new Date(event.date_start).toLocaleDateString("en-US", {
                       month: "short",
                     })}
                   </div>
                   <div
                     className="text-xl w-full font-orbitron font-bold py-2 
-                  bg-gradient-to-br from-cyan-400/10 to-blue-600/10"
+                  bg-gray-950/20"
                   >
                     {new Date(event.date_start).toLocaleDateString("en-US", {
                       day: "numeric",

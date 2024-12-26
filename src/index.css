@@ -212,13 +212,13 @@ input[type="time"]::-moz-calendar-picker-indicator {
 
 @keyframes subtle-hover-glow {
   0% {
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 6px rgba(0, 225, 255, 0.2);
   }
   50% {
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 30px rgba(0, 225, 255, 0.4);
   }
   100% {
-    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 6px rgba(0, 225, 255, 0.2);
   }
 }
 

@@ -46,7 +46,7 @@ const ProjectWheel = () => {
       const folderItems = await Promise.all(
         folders.map(async (folder, index) => {
           const fullPath = `${path}\\${folder.name}`;
-          const framework = await detectProjectType(fullPath);
+          const { framework, description } = await detectProjectType(fullPath);
           const lastModified = formatLastModified(folder.last_modified);
 
           return {
@@ -54,6 +54,7 @@ const ProjectWheel = () => {
             content: folder.name,
             path: fullPath,
             framework,
+            description,
             lastModified,
             exiting: false,
           };
@@ -148,6 +149,8 @@ const ProjectWheel = () => {
   const detectProjectType = async (path) => {
     try {
       const hasPackageJson = await exists(`${path}/package.json`);
+      let framework = "Unknown";
+
       if (hasPackageJson) {
         const packageJson = JSON.parse(
           await readTextFile(`${path}/package.json`)
@@ -157,33 +160,67 @@ const ProjectWheel = () => {
           ...packageJson.devDependencies,
         };
 
-        if (deps.next) return "Next.js";
-        if (deps.react) return "React";
-        if (deps.vue) return "Vue";
-        if (deps.angular) return "Angular";
-        if (deps.svelte) return "Svelte";
-        if (deps.nuxt) return "Nuxt.js";
-        if (deps.gatsby) return "Gatsby";
-        if (deps.astro) return "Astro";
-        if (deps.sapper) return "Sapper";
-        if (deps["@sveltejs/kit"]) return "SvelteKit";
-        return "JavaScript";
+        if (deps.next) framework = "Next.js";
+        else if (deps.react) framework = "React";
+        else if (deps.vue) framework = "Vue";
+        else if (deps.angular) framework = "Angular";
+        else if (deps.svelte) framework = "Svelte";
+        else framework = "JavaScript";
+      } else {
+        const hasFrontend =
+          (await exists(`${path}/frontend`)) ||
+          (await exists(`${path}/client`));
+        const hasBackend =
+          (await exists(`${path}/backend`)) || (await exists(`${path}/server`));
+
+        if (hasFrontend && hasBackend) framework = "Full Stack";
+        else if (hasFrontend) framework = "Frontend";
+        else if (hasBackend) framework = "Backend";
       }
 
-      const hasFrontend =
-        (await exists(`${path}/frontend`)) || (await exists(`${path}/client`));
-      const hasBackend =
-        (await exists(`${path}/backend`)) || (await exists(`${path}/server`));
+      // Read README.md for project description
+      let description = null;
+      const hasReadme = await exists(`${path}/README.md`);
+      if (hasReadme) {
+        const rawContent = await readTextFile(`${path}/README.md`);
+        description = processReadmeDescription(rawContent);
+      }
 
-      if (hasFrontend && hasBackend) return "Full Stack";
-      if (hasFrontend) return "Frontend";
-      if (hasBackend) return "Backend";
-
-      return "Unknown";
+      return { framework, description };
     } catch (error) {
       console.error("Error detecting project type:", error);
-      return "Unknown";
+      return { framework: "Unknown", description: null };
     }
+  };
+
+  const processReadmeDescription = (content) => {
+    if (!content) return null;
+
+    return content
+      .split("\n") // Split by newlines
+      .map((line) => {
+        // Skip Markdown headings
+        if (/^\s*#/.test(line)) return null;
+
+        // Replace Markdown links with descriptive text
+        line = line.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+
+        // Replace triple backticks with a single backtick
+        line = line.replace(/```/g, "`");
+
+        // Replace dashes at the beginning of a line with bullet points
+        line = line.replace(/^\s*-\s*/, "• ");
+
+        // Remove asterisks for italicized text
+        line = line.replace(/\*(.*?)\*/g, "$1");
+
+        return line.trim(); // Trim whitespace from meaningful lines
+      })
+      .filter((line, index, arr) => {
+        // Remove consecutive empty lines but keep meaningful line breaks
+        return line !== "\n" || arr[index - 1] !== "\n";
+      })
+      .join("\n"); // Join lines with newlines to preserve formatting
   };
 
   const frameworkIcons = {
@@ -315,7 +352,7 @@ const ProjectWheel = () => {
           </div>
         )}
         <div className="flex flex-col justify-center items-center w-full p-2 bg-gradient-to-r from-gray-950/10 via-blue-950/30 to-gray-950/10 rounded-2xl shadow-lg">
-          <div className="flex flex-col gap-5 p-4 -mt-2">
+          <div className="flex flex-col gap-5 p-4 -mt-3">
             {/* GitHub Button */}
             <button
               onClick={toggleGithub}
@@ -448,9 +485,7 @@ const ProjectWheel = () => {
                       </div>
                       {item.description && (
                         <div className="flex items-start gap-3 text-xs text-white/70">
-                          <div className="">
-                            <MdNotes className="w-4 h-4" />
-                          </div>
+                          <MdNotes className="w-4 h-4" />
                           <span
                             className="text-xs text-left text-white/70 w-full mr-7"
                             style={{

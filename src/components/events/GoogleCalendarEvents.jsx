@@ -10,6 +10,13 @@ import { ScaleLoader } from "react-spinners";
 import GoogleCalendarIcon from "../../assets/google-calendar-logo.png";
 import eventBus from "../../utils/eventBus";
 
+const SelectedGoogleEventModal = lazy(() =>
+  import("./SelectedGoogleEventModal")
+);
+const GoogleCalendarEventCards = lazy(() =>
+  import("./GoogleCalendarEventCards")
+);
+
 const CACHE_KEY = "cached_events";
 const LAST_FETCH_KEY = "last_fetch_timestamp";
 
@@ -20,13 +27,7 @@ const GoogleCalendarEvents = () => {
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  const SelectedGoogleEventModal = lazy(() =>
-    import("./SelectedGoogleEventModal")
-  );
-  const GoogleCalendarEventCards = lazy(() =>
-    import("./GoogleCalendarEventCards")
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   // Load events from localStorage on component mount
   useEffect(() => {
@@ -63,6 +64,8 @@ const GoogleCalendarEvents = () => {
     setTokens(tokenData);
     localStorage.setItem("refreshToken", tokenData.refresh_token);
     setAuthUrl("");
+    setCode("");
+    setIsAuthenticated(true);
   };
 
   const refreshAccessToken = async () => {
@@ -121,8 +124,14 @@ const GoogleCalendarEvents = () => {
       localStorage.setItem(CACHE_KEY, JSON.stringify(fetchedEvents));
       localStorage.setItem(LAST_FETCH_KEY, Date.now().toString());
       eventBus.emit("events_updated");
+      setIsAuthenticated(true);
     } catch (error) {
-      console.error("Failed to fetch events:", error);
+      console.error("Error fetching Google Calendar events:", error);
+      const errorMessage = String(error);
+      const isAuthenticating = errorMessage.includes("401");
+      if (isAuthenticating) {
+        setIsAuthenticated(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -179,59 +188,72 @@ const GoogleCalendarEvents = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-3">
-        <div className="flex items-center gap-3 mb-1">
+        <div className="flex items-center gap-4 mb-1">
           <img src={GoogleCalendarIcon} alt="Google Calendar" className="w-8" />
-          <h2 className="text-xl font-bold text-white">Google Calendar</h2>
+          <h2 className="text-2xl text-white">Google Calendar</h2>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center rounded-lg overflow-hidden">
           {tokens && (
-            <div className="flex items-center">
+            <>
+              {/* Google Auth Button */}
               <button
                 onClick={getAuthUrl}
-                className="flex items-center gap-2 text-sm bg-pink-300/20 hover:bg-pink-300/40 duration-300 text-white px-3 py-2 rounded-l-md"
+                className={`flex group rounded-l-lg bg-white items-center gap-2 text-sm ${
+                  isAuthenticated ? "saturate-100" : "saturate-0"
+                } duration-300 text-white px-3 py-2 `}
               >
-                <FcGoogle size={16} />
+                <FcGoogle
+                  className="group-hover:-hue-rotate-90 group-hover:-rotate-[25deg] duration-300"
+                  size={16}
+                />
               </button>
 
+              {/* Refresh Events Button */}
               <button
                 onClick={fetchEvents}
-                className="flex items-center gap-2 text-sm hover:bg-blue-500/40 duration-300 bg-blue-500/20 text-white px-3 py-1.5 rounded-r-md"
+                className="flex items-center px-4 py-[7px] group bg-indigo-500/30 hover:bg-indigo-500/50 shadow-md hover:shadow-lg text-sm transition-all duration-300"
               >
-                <RefreshCw size={14} /> Refresh
+                <RefreshCw
+                  size={16}
+                  className="mr-2 -mt-0.5 duration-300 group-hover:rotate-180"
+                />
+                Refresh
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
+
       <div className="flex justify-center">
-        <div className="flex flex-col gap-2 justify-center">
+        <div className="flex flex-col gap-4 justify-center items-center">
+          {/* Login with Google Button */}
           {!tokens && (
             <button
-              className="px-[87px] py-2 bg-white justify-center duration-150 border text-gray-700 rounded shadow hover:bg-gray-100 flex items-center"
               onClick={getAuthUrl}
+              className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500/20 via-cyan-500/30 to-green-600/40 text-cyan-100 rounded-lg text-sm font-semibold shadow-md hover:from-blue-500/40 hover:to-green-600/50 hover:shadow-lg transition-all duration-300"
             >
               <img
                 src={GoogleLogo}
                 alt="Google logo"
-                className="w-5 h-5 mr-2"
+                className="w-5 h-5 mr-3"
               />
-              <p>Login with Google</p>
+              Login with Google
             </button>
           )}
+
+          {/* Submit Code Input and Button */}
           {authUrl && (
-            <div className="flex items-center gap-1 justify-center">
+            <div className="flex items-center gap-2 mb-4">
               <input
                 type="text"
                 placeholder="Enter code"
-                className="max-w-md px-4 py-2 bg-gray-900/50 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-[565px] px-4 py-2 bg-gray-950/40 text-white border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:outline-none placeholder-gray-400 transition-all duration-300"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                }}
+                onKeyDown={(e) => e.stopPropagation()}
               />
               <button
-                className="px-4 py-[10px] bg-gradient-to-r from-teal-500/40 via-blue-500/30 to-green-600/40 text-white rounded-lg text-sm font-semibold duration-150 transition hover:shadow-lg"
+                className="px-5 py-2.5 bg-gray-950/40 text-white font-semibold text-sm rounded-lg hover:bg-gray-950/60 shadow-md hover:shadow-lg transition-all duration-300"
                 onClick={getAccessToken}
               >
                 Submit Code

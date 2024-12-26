@@ -11,6 +11,15 @@
     "productName": "Daspberry",
     "version": "0.1.0"
   },
+  "plugins": {
+    "oauth": {
+      "provider": "google",
+      "clientId": "${env.GOOGLE_CLIENT_ID}",
+      "clientSecret": "${env.GOOGLE_CLIENT_SECRET}",
+      "redirectUri": "http://localhost:5173/auth",
+      "scopes": ["https://www.googleapis.com/auth/calendar.events"]
+    }
+  },
   "tauri": {
     "allowlist": {
       "all": true,
@@ -66,15 +75,20 @@
         "timestampUrl": "",
         "nsis": {
           "installerIcon": "icons/icon.ico",
-          "sidebarImage": "icons/sidebar.bmp",
-          "compression": "lzma"
+          "sidebarImage": "icons/sidebar.bmp"
         },
         "wix": {}
       }
     },
     "security": {
       "csp": null,
-      "dangerousDisableAssetCspModification": ["http://localhost"]
+      "dangerousDisableAssetCspModification": ["http://localhost"],
+      "dangerousRemoteDomainIpcAccess": [
+        {
+          "domain": "accounts.google.com",
+          "windows": ["*", "auth"]
+        }
+      ]
     },
     "updater": {
       "active": false

@@ -7,11 +7,16 @@ import React, {
   lazy,
   Suspense,
 } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { invoke } from "@tauri-apps/api/tauri";
 import { PlusCircle, CalendarFold } from "lucide-react";
 import FallbackImage from "../../assets/fallback-image-events.jpg";
 import eventBus from "../../utils/eventBus";
+
+const LocalEventCards = lazy(() => import("./LocalEventCards"));
+const LocalPastEventModal = lazy(() => import("./LocalPastEventModal"));
+const SelectedLocalEventModal = lazy(() => import("./SelectedLocalEventModal"));
+const NewLocalEventModal = lazy(() => import("./NewLocalEventModal"));
+const PaginationControls = lazy(() => import("./PaginationControls"));
 
 const LocalEvents = () => {
   const [events, setEvents] = useState([]);
@@ -19,33 +24,9 @@ const LocalEvents = () => {
   const [imageCache, setImageCache] = useState({});
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [editableEvent, setEditableEvent] = useState({});
-  const [showPreview, setShowPreview] = useState(false);
   const [isEventAvailable, setIsEventAvailable] = useState(false);
   const [pastEventsModalOpen, setPastEventsModalOpen] = useState(false);
-  const [isSortedMostRecent, setIsSortedMostRecent] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [newEvent, setNewEvent] = useState({
-    title: "",
-    description: "",
-    date_start: "",
-    date_end: "",
-    time_start: "",
-    time_end: "",
-    location: "",
-  });
-
-  const LocalEventCards = lazy(() => import("./LocalEventCards"));
-  const LocalPastEventModal = lazy(() => import("./LocalPastEventModal"));
-  const SelectedLocalEventModal = lazy(() =>
-    import("./SelectedLocalEventModal")
-  );
-  const NewLocalEventModal = lazy(() => import("./NewLocalEventModal"));
-  const PaginationControls = lazy(() => import("./PaginationControls"));
-
-  const startDateRef = useRef(null);
-  const endDateRef = useRef(null);
-  const timeStartRef = useRef(null);
-  const timeEndRef = useRef(null);
 
   const handleContainerClick = (ref) => {
     if (ref.current) {
@@ -134,32 +115,6 @@ const LocalEvents = () => {
     }
   };
 
-  const handleAddEvent = () => {
-    if (!newEvent.title.trim()) {
-      alert("Event title cannot be empty.");
-      return;
-    }
-
-    const newEventEntry = {
-      id: uuidv4(),
-      ...newEvent,
-    };
-    const updatedEvents = [...events, newEventEntry];
-    setEvents(updatedEvents);
-    saveEvents(updatedEvents);
-    setNewEvent({
-      title: "",
-      description: "",
-      date_start: "",
-      date_end: "",
-      time_start: "",
-      time_end: "",
-      location: "",
-    });
-    eventBus.emit("events_updated");
-    setNewEventModalOpen(false);
-  };
-
   const paginatedEvents = useMemo(() => {
     const now = new Date();
 
@@ -168,7 +123,8 @@ const LocalEvents = () => {
         `${event.date_end || event.date_start}T${event.time_end || "23:59"}`
       );
 
-      return endDateTime >= now; // Exclude events that have already passed
+      // Exclude events that have already passed
+      return endDateTime >= now;
     });
 
     const sortedWithDates = upcomingEvents.sort((a, b) => {
@@ -205,48 +161,6 @@ const LocalEvents = () => {
     const eventsOnCurrentPage = paginatedEvents.events.length;
     return eventsOnCurrentPage > 4 ? "text-xl" : "text-2xl";
   }, [paginatedEvents.events.length]);
-
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setEditableEvent((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSave = () => {
-    if (!selectedEvent) return;
-
-    const updatedEvents = events.map((event) =>
-      event.id === selectedEvent.id
-        ? {
-            ...event,
-            ...editableEvent,
-            date_start: editableEvent.date_start || null,
-            date_end: editableEvent.date_end || null,
-            time_start: editableEvent.time_start || null,
-            time_end: editableEvent.time_end || null,
-          }
-        : event
-    );
-
-    setEvents(updatedEvents);
-    saveEvents(updatedEvents);
-    eventBus.emit("events_updated");
-    setSelectedEvent(null);
-    setEditableEvent({});
-  };
-  const handleDelete = () => {
-    if (!selectedEvent) return;
-
-    const updatedEvents = events.filter(
-      (event) => event.id !== selectedEvent.id
-    );
-
-    setEvents(updatedEvents);
-    saveEvents(updatedEvents);
-
-    eventBus.emit("events_updated");
-
-    setSelectedEvent(null);
-  };
 
   const preloadImages = useCallback(async () => {
     const updatedCache = { ...imageCacheRef.current };
@@ -290,40 +204,6 @@ const LocalEvents = () => {
     }
   }, [events, preloadImages]);
 
-  useEffect(() => {
-    if (events.length > 0) {
-      preloadImages();
-    }
-  }, [events, preloadImages]);
-
-  const pastEvents = events.filter((event) => {
-    const eventEndDate = event.date_end
-      ? new Date(event.date_end)
-      : new Date(event.date_start);
-    return eventEndDate < new Date();
-  });
-
-  const clearTime = (field) => {
-    setNewEvent((prev) => ({
-      ...prev,
-      [field]: "",
-    }));
-  };
-
-  const sortedPastEvents = useMemo(() => {
-    return isSortedMostRecent
-      ? [...pastEvents].sort(
-          (a, b) =>
-            new Date(b.date_end || b.date_start) -
-            new Date(a.date_end || a.date_start)
-        )
-      : [...pastEvents].sort(
-          (a, b) =>
-            new Date(a.date_end || a.date_start) -
-            new Date(b.date_end || b.date_start)
-        );
-  }, [isSortedMostRecent, pastEvents]);
-
   const getTimeRemainingLabel = (event) => {
     const now = new Date();
     const startDateTime = new Date(
@@ -332,14 +212,15 @@ const LocalEvents = () => {
 
     const timeDifference = startDateTime - now;
 
-    if (timeDifference <= 0) return null; // Event is ongoing or in the past
+    // Event is ongoing or in the past
+    if (timeDifference <= 0) return null;
 
     const seconds = Math.floor(timeDifference / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    const months = Math.floor(days / 30); // Approximation for months
-    const years = Math.floor(days / 365); // Approximation for years
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
 
     if (years > 0) {
       return `in ${years} year${years > 1 ? "s" : ""}`;
@@ -356,25 +237,27 @@ const LocalEvents = () => {
   };
 
   return (
-    <div className="p-4">
+    <div>
       <div className="flex justify-between mb-4">
-        <h1 className="text-2xl flex gap-2 items-center">
+        <h1 className="text-2xl flex gap-4 items-center">
           <CalendarFold />
           Upcoming Events
         </h1>
-        <div className="flex">
+        <div className="flex rounded-lg overflow-hidden">
           <button
             onClick={() => setPastEventsModalOpen(true)}
-            className="flex items-center text-sm overflow-hidden bg-purple-500/20 hover:bg-purple-600/20 duration-300 text-white px-3 rounded-l-md"
+            className="flex items-center justify-center px-4 py-1 text-sm font-medium bg-purple-500/30 hover:bg-purple-500/40 text-white shadow-md hover:shadow-lg transition-all duration-300"
           >
             <CalendarFold size={18} />
           </button>
+
+          {/* Add Event Button */}
           <button
             onClick={() => setNewEventModalOpen(true)}
-            className="flex items-center gap-2 text-sm overflow-hidden bg-blue-500/20 hover:bg-purple-500/20 duration-300 text-white px-3 py-1 rounded-r-md"
+            className="flex items-center justify-center px-4 py-1 text-sm font-medium bg-blue-500/40 text-white hover:bg-blue-500/50 shadow-md hover:shadow-lg transition-all duration-300"
           >
-            <PlusCircle size={18} />
-            <p className="text-sm mt-0.5">Add Event</p>
+            <PlusCircle size={16} />
+            <span className="ml-2 hidden sm:inline">Add Event</span>
           </button>
           {/* Clear Events
         <button
@@ -416,10 +299,8 @@ const LocalEvents = () => {
         {pastEventsModalOpen && (
           <LocalPastEventModal
             setPastEventsModalOpen={setPastEventsModalOpen}
-            sortedPastEvents={sortedPastEvents}
             setSelectedEvent={setSelectedEvent}
-            isSortedMostRecent={isSortedMostRecent}
-            setIsSortedMostRecent={setIsSortedMostRecent}
+            events={events}
           />
         )}
 
@@ -428,33 +309,22 @@ const LocalEvents = () => {
           <SelectedLocalEventModal
             selectedEvent={selectedEvent}
             setEditableEvent={setEditableEvent}
-            handleEditChange={handleEditChange}
-            handleSave={handleSave}
-            handleDelete={handleDelete}
-            startDateRef={startDateRef}
-            endDateRef={endDateRef}
-            timeStartRef={timeStartRef}
-            timeEndRef={timeEndRef}
-            showPreview={showPreview}
-            setShowPreview={setShowPreview}
             editableEvent={editableEvent}
             setSelectedEvent={setSelectedEvent}
+            saveEvents={saveEvents}
+            setEvents={setEvents}
+            events={events}
           />
         )}
 
         {/* New Event Modal */}
         {newEventModalOpen && (
           <NewLocalEventModal
-            newEvent={newEvent}
-            setNewEvent={setNewEvent}
             setNewEventModalOpen={setNewEventModalOpen}
-            startDateRef={startDateRef}
-            endDateRef={endDateRef}
-            timeStartRef={timeStartRef}
-            timeEndRef={timeEndRef}
             handleContainerClick={handleContainerClick}
-            handleAddEvent={handleAddEvent}
-            clearTime={clearTime}
+            saveEvents={saveEvents}
+            setEvents={setEvents}
+            events={events}
           />
         )}
       </Suspense>

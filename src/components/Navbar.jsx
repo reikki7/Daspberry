@@ -41,8 +41,8 @@ const Navbar = () => {
                 className={`px-6 py-2 rounded-full text-white text-sm tracking-wide font-light transition-all duration-300 shadow-lg
                 ${
                   location.pathname === item.path
-                    ? "bg-gradient-to-r from-[#ff69af] via-[#832ed3] to-[#2188e9] text-white shadow-lg shadow-pink-500/30 border border-white/20"
-                    : "bg-gray-950/40 hover:opacity-90 hover:shadow-lg hover:shadow-blue-400/30 border border-white/10"
+                    ? "bg-gradient-to-r from-[#ff69af]/75 via-[#832ed3]/75 to-[#2188e9]/75  text-white shadow-lg shadow-pink-500/30"
+                    : "bg-gray-950/40 hover:opacity-90 hover:shadow-lg hover:shadow-blue-400/30"
                 }`}
                 style={{
                   userSelect: "none",
