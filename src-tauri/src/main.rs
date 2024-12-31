@@ -56,12 +56,14 @@ struct CalendarEvent {
     location: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(default)] 
 struct Task {
     id: String,
     title: String,
     date: String,
     description: String,
+    project: String,
     completed: bool,
     completed_on: Option<String>,
 }
@@ -98,11 +100,9 @@ fn get_google_client_id() -> String {
     client_id
 }
 
-
 fn get_google_client_secret() -> String {
     std::env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET is not set")
 }
-
 
 #[command]
 fn get_google_auth_url() -> String {
@@ -149,7 +149,7 @@ async fn fetch_google_calendar_events(access_token: String) -> Result<Vec<Calend
         .bearer_auth(access_token)
         .query(&[
             ("timeMin", one_month_before_now.as_str()),
-            ("singleEvents", "true"), 
+            ("singleEvents", "true"),
             ("orderBy", "startTime")
         ])
         .send()
@@ -266,7 +266,6 @@ fn get_project_folders(path: String) -> Result<Vec<Folder>, String> {
         let path = entry.path();
         if path.is_dir() {
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                // Get the last modified time
                 let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
                 let last_modified = metadata
                     .modified()
@@ -359,7 +358,6 @@ async fn get_project_info(path: &str) -> Result<ProjectInfo, String> {
 
     Ok(info)
 }
-
 
 #[command]
 fn open_folder_in_vscode(path: String) -> Result<(), String> {
@@ -503,7 +501,10 @@ fn read_asana_user_details_cache() -> Result<String, String> {
   }
 }
 
-// Local tasks
+// ------------------------- SAVE / LOAD TASKS -------------------------
+// These remain unchanged, since they automatically handle the new
+// "project" field via serde’s JSON serialization and deserialization.
+// --------------------------------------------------------------------
 #[command]
 fn save_local_tasks(tasks: Vec<Task>) -> Result<(), String> {
     let tasks_json = serde_json::to_string(&tasks)
@@ -586,7 +587,6 @@ fn clear_local_events() -> Result<(), String> {
         Err("Events file does not exist".to_string())
     }
 }
-
 
 fn main() {
     // Lock file to enforce a single instance

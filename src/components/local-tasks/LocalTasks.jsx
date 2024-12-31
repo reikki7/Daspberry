@@ -18,19 +18,18 @@ const SyntaxHighlighter = lazy(() =>
   }))
 );
 import { nightOwl } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Slide, ToastContainer, toast } from "react-toastify";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import "react-toastify/dist/ReactToastify.css";
 import eventBus from "../../utils/eventBus";
 
-import LocalTaskList from "./LocalTaskList";
-
+const LocalTaskList = lazy(() => import("./LocalTaskList"));
 const SelectedLocalTaskModal = lazy(() => import("./SelectedLocalTaskModal"));
 const CompletedLocalTaskModal = lazy(() => import("./CompletedLocalTaskModal"));
 const NewLocalTaskModal = lazy(() => import("./NewLocalTaskModal"));
 
 const LocalTasks = ({ setIsTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]); // ← new state for project names
   const [selectedTask, setSelectedTask] = useState(null);
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
   const [completedTasksModalOpen, setCompletedTasksModalOpen] = useState(false);
@@ -41,15 +40,17 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [copied, setCopied] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Include `project` as empty string by default
   const [newTask, setNewTask] = useState({
     title: "",
     date: "",
     description: "",
+    project: "",
     completed: false,
   });
 
   const dateInputRef = useRef(null);
-
   const ITEMS_PER_PAGE = 5;
 
   const saveTasks = async (updatedTasks) => {
@@ -70,14 +71,25 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       console.error("Error loading tasks:", error);
     }
   };
+
   useEffect(() => {
     loadTasks();
+    import("./SelectedLocalTaskModal");
+    import("./CompletedLocalTaskModal");
+    import("./NewLocalTaskModal");
   }, []);
 
   useEffect(() => {
     if (tasks.length > 0) {
       saveTasks(tasks);
     }
+  }, [tasks]);
+
+  useEffect(() => {
+    const distinctProjects = [
+      ...new Set(tasks.map((t) => t.project).filter(Boolean)),
+    ];
+    setProjects(distinctProjects);
   }, [tasks]);
 
   const handleContainerClick = () => {
@@ -102,11 +114,17 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     }
     setNewTaskModalOpen(false);
 
+    // If user typed a project that isn’t in the list, add it.
+    if (newTask.project && !projects.includes(newTask.project)) {
+      setProjects((prev) => [...prev, newTask.project]);
+    }
+
     const newTaskEntry = {
       id: uuidv4(),
       title: newTask.title,
       date: newTask.date || "",
       description: newTask.description,
+      project: newTask.project || "", // store as "" if none set
       completed: false,
       completed_on: null,
     };
@@ -121,12 +139,17 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       console.error("Error saving tasks:", error);
     }
 
-    setNewTask({ title: "", date: "", description: "" });
+    // Reset the newTask form
+    setNewTask({
+      title: "",
+      date: "",
+      description: "",
+      project: "",
+    });
   };
 
   const processTaskDescription = (notes) => {
     if (!notes) return null;
-
     return notes
       .split(/(`{2}[\s\S]*?`{2}|https?:\/\/[^\s]+|\n|- )/g)
       .map((segment, index, array) => {
@@ -194,7 +217,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
         if (segment === "- ") {
           const nextSegment = array[index + 1]?.trim();
           if (nextSegment) {
-            // Skip the next segment to avoid duplication
             array[index + 1] = "";
             return (
               <div key={index} className="flex items-start">
@@ -204,21 +226,15 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
             );
           }
         }
-        // Handle newlines - check if next segment is a bullet point
+
         if (segment === "\n") {
           const nextSegment = array[index + 1];
           if (nextSegment === "- ") {
-            return null; // Skip the line break if next segment is a bullet point
+            return null;
           }
           return <br key={index} />;
         }
 
-        // Handle newlines
-        if (segment === "\n") {
-          return <br key={index} />;
-        }
-
-        // Handle regular text or unmatched segments
         return (
           <span key={index} className="whitespace-pre-wrap">
             {segment}
@@ -232,6 +248,10 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     if (!selectedTask.title.trim()) {
       showNotification("Task title cannot be empty.", "error");
       return;
+    }
+
+    if (selectedTask.project && !projects.includes(selectedTask.project)) {
+      setProjects((prev) => [...prev, selectedTask.project]);
     }
 
     const updatedTasks = tasks.map((task) =>
@@ -264,7 +284,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   };
 
   const clearAllFields = () => {
-    setNewTask({ title: "", date: "", description: "" });
+    setNewTask({ title: "", date: "", description: "", project: "" });
     setNewTaskModalOpen(false);
     setSelectedTask(null);
     setErrorMessage("");
@@ -290,8 +310,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
   const handleTaskComplete = (taskId, isComplete) => {
     const completed_on = isComplete ? new Date().toISOString() : null;
-
-    // Update the task in the tasks array
     const updatedTasks = tasks.map((task) =>
       task.id === taskId
         ? { ...task, completed: isComplete, completed_on: completed_on }
@@ -299,11 +317,8 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     );
 
     setTasks(updatedTasks);
-
-    // Save updated tasks
     saveTasks(updatedTasks);
 
-    // If the selectedTask is being updated, sync the state
     if (selectedTask && selectedTask.id === taskId) {
       setSelectedTask({
         ...selectedTask,
@@ -353,7 +368,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       .sort((a, b) => {
         const dateA = new Date(a.date).getTime() || Infinity;
         const dateB = new Date(b.date).getTime() || Infinity;
-
         const now = new Date().getTime();
 
         const isOverdueA = dateA < now;
@@ -364,7 +378,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
         return dateA - dateB;
       })
-      .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE); // Paginate
+      .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
   }, [tasks, currentPage]);
 
   const goToPreviousPage = () => {
@@ -426,18 +440,18 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
         </div>
       </div>
 
-      <LocalTaskList
-        tasks={currentTasks}
-        handleTaskClick={handleTaskClick}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        goToPreviousPage={goToPreviousPage}
-        goToNextPage={goToNextPage}
-        setCurrentPage={setCurrentPage}
-        totalIncompleteTasks={totalIncompleteTasks}
-      />
-
       <Suspense fallback={null}>
+        <LocalTaskList
+          tasks={currentTasks}
+          handleTaskClick={handleTaskClick}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          goToPreviousPage={goToPreviousPage}
+          goToNextPage={goToNextPage}
+          setCurrentPage={setCurrentPage}
+          totalIncompleteTasks={totalIncompleteTasks}
+        />
+
         {/* Task Modal */}
         {selectedTask && (
           <SelectedLocalTaskModal
@@ -455,6 +469,8 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
             taskIsComplete={taskIsComplete}
             handleTaskComplete={handleTaskComplete}
             processTaskDescription={processTaskDescription}
+            projects={projects}
+            setProjects={setProjects}
           />
         )}
 
@@ -468,7 +484,10 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
             setNewTaskModalOpen={setNewTaskModalOpen}
             dateInputRef={dateInputRef}
             handleContainerClick={handleContainerClick}
-            processTaskDescription={processTaskDescription}
+            notification={notification}
+            setNotification={setNotification}
+            projects={projects}
+            setProjects={setProjects}
           />
         )}
 

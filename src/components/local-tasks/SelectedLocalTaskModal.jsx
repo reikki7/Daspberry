@@ -1,3 +1,7 @@
+import React from "react";
+import CreatableSelect from "react-select/creatable"; // ← Use CreatableSelect
+import { buildProjectOptions } from "../../utils/buildProjectOptions";
+
 import {
   ClipboardPen,
   CalendarIcon,
@@ -22,10 +26,103 @@ const SelectedLocalTaskModal = ({
   taskIsComplete,
   handleTaskComplete,
   processTaskDescription,
+  projects,
+  setProjects, // <-- Add this prop if you want to update global projects
 }) => {
+  // Convert projects array to react-select options
+  const projectOptions = buildProjectOptions(projects);
+
+  // Find the currently selected option
+  const selectedOption =
+    projectOptions.find((option) => option.value === selectedTask.project) ||
+    null;
+
+  // Custom styles for react-select
+  const customStyles = {
+    control: (provided, state) => ({
+      ...provided,
+      backgroundColor: "rgba(255,255,255,0.05)",
+      borderColor: state.isFocused
+        ? "rgba(34,211,238,0.7)"
+        : "rgba(255,255,255,0.2)",
+      borderRadius: "0.5rem",
+      padding: "0 0.25rem",
+      boxShadow: state.isFocused ? "0 0 0 3px rgba(34,211,238,0.3)" : "none",
+      "&:hover": {
+        borderColor: "rgba(34,211,238,0.7)",
+      },
+    }),
+    menu: (provided) => ({
+      ...provided,
+      backgroundColor: "#1f2937",
+      border: "1px solid rgba(255,255,255,0.2)",
+      borderRadius: "0.5rem",
+      marginTop: "0.25rem",
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      backgroundColor: state.isFocused ? "#008eae" : "transparent",
+      color: "#fff",
+      cursor: "pointer",
+      "&:active": {
+        backgroundColor: "#0284c7",
+      },
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: "#fff",
+    }),
+    placeholder: (provided) => ({
+      ...provided,
+      color: "rgba(255,255,255,0.6)",
+    }),
+    input: (provided) => ({
+      ...provided,
+      color: "#fff",
+    }),
+  };
+
+  // Custom theme
+  const customTheme = (theme) => ({
+    ...theme,
+    borderRadius: 8,
+    colors: {
+      ...theme.colors,
+      primary25: "#0ea5e9",
+      primary: "#06B6D4",
+    },
+  });
+
+  // Handle creation of a new project
+  const handleCreateNewProject = (inputValue) => {
+    // If the user typed a new project name, optionally add it to 'projects' array
+    if (inputValue && setProjects && !projects.includes(inputValue)) {
+      setProjects((prev) => [...prev, inputValue]);
+    }
+
+    // Update the selectedTask with the new project name
+    setSelectedTask((prev) => ({
+      ...prev,
+      project: inputValue,
+    }));
+  };
+
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      closeNewTaskModal();
+    }
+  };
+
   return (
-    <div className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-sm bg-black/60  flex items-center justify-center z-50 px-4 py-8">
-      <div className="bg-gray-950/80 rounded-2xl overflow-hidden max-w-4xl w-full flex flex-col border border-white/10 shadow-2xl">
+    <div
+      className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-sm bg-black/60 flex items-center justify-center z-50 px-4 py-8"
+      onClick={handleOverlayClick}
+    >
+      <div
+        className="bg-gray-950/80 rounded-2xl overflow-hidden max-w-4xl w-full flex flex-col border border-white/10 shadow-2xl"
+        onClick={(e) => e.stopPropagation()} // Prevent click inside modal from closing it
+      >
+        {/* ---- HEADER ---- */}
         <div
           data-tauri-drag-region
           className="p-5 text-white relative"
@@ -36,7 +133,7 @@ const SelectedLocalTaskModal = ({
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-cyan-500/10 to-transparent rounded-bl-full" />
           <div className="flex w-full items-center mr-2 relative">
-            <ClipboardPen className="w-7 h-auto mr-3 text-white" />
+            <ClipboardPen className="w-8 h-auto mr-3 text-white" />
             <input
               type="text"
               value={selectedTask.title}
@@ -56,38 +153,70 @@ const SelectedLocalTaskModal = ({
           </div>
         </div>
 
+        {/* ---- ERROR MESSAGE ---- */}
         {errorMessage && (
           <div className="text-red-500 mb-2 text-sm">{errorMessage}</div>
         )}
 
+        {/* ---- CONTENT ---- */}
         <div className="p-6 overflow-y-auto scrollbar-hide">
-          <div className="relative flex justify-between text-sm mb-4 group">
-            <div
-              className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-white/10 cursor-pointer hover:border-cyan-500/30 transition-all duration-300 bg-white/5"
-              onClick={handleContainerClick}
-            >
-              <CalendarIcon className="w-4 -mt-0.5 h-4 text-cyan-400" />
-              <input
-                type="date"
-                ref={dateInputRef}
-                style={{ visibility: "hidden", position: "absolute" }}
-                value={selectedTask.date}
-                onChange={(e) => {
-                  const newDate = e.target.value || "";
-                  setSelectedTask({ ...selectedTask, date: newDate });
-                }}
-              />
-              <span className="text-white font-light tracking-wide">
-                {selectedTask.date
-                  ? new Date(selectedTask.date).toLocaleDateString("en-US", {
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "Select date"}
-              </span>
+          {/* ---- TOP ACTIONS: DATE & PROJECT SELECT ---- */}
+          <div className="relative flex items-center justify-between text-sm mb-4 group">
+            <div className="flex gap-3">
+              {/* DATE PICKER */}
+              <div
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-white/10 cursor-pointer hover:border-cyan-500/30 transition-all duration-300 bg-white/5"
+                onClick={handleContainerClick}
+              >
+                <CalendarIcon className="w-4 -mt-0.5 h-4 text-cyan-400" />
+                <input
+                  type="date"
+                  ref={dateInputRef}
+                  style={{ visibility: "hidden", position: "absolute" }}
+                  value={selectedTask.date}
+                  onChange={(e) => {
+                    const newDate = e.target.value || "";
+                    setSelectedTask({ ...selectedTask, date: newDate });
+                  }}
+                />
+                <span className="text-white font-light tracking-wide">
+                  {selectedTask.date
+                    ? new Date(selectedTask.date).toLocaleDateString("en-US", {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })
+                    : "Select date"}
+                </span>
+              </div>
+
+              {/* CREATABLESELECT: PROJECT SELECTION */}
+              <div className="min-w-[210px]">
+                <CreatableSelect
+                  options={projectOptions}
+                  value={selectedOption}
+                  onChange={(newValue) => {
+                    setSelectedTask((prev) => ({
+                      ...prev,
+                      project: newValue ? newValue.value : "",
+                    }));
+                  }}
+                  onCreateOption={handleCreateNewProject}
+                  placeholder="No Project Set"
+                  isClearable
+                  isSearchable
+                  menuPortalTarget={document.body}
+                  styles={{
+                    ...customStyles,
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                  }}
+                  theme={customTheme}
+                  formatCreateLabel={(val) => `Create "${val}"`}
+                />
+              </div>
             </div>
 
+            {/* ---- ACTION BUTTONS (Edit, Delete, Complete) ---- */}
             <div className="flex items-center gap-2">
               {!editMode ? (
                 <button
@@ -104,6 +233,7 @@ const SelectedLocalTaskModal = ({
                   <Eye size={15} />
                 </button>
               )}
+
               <button
                 onClick={() => handleDeleteTask(selectedTask.id)}
                 className="text-red-400 bg-red-500/10 border border-red-500/20 p-2 hover:border-red-500/40 rounded-xl transition-all duration-300 backdrop-blur-xl hover:bg-red-500/20"
@@ -129,6 +259,7 @@ const SelectedLocalTaskModal = ({
             </div>
           </div>
 
+          {/* ---- DESCRIPTION (Edit or View) ---- */}
           <div
             className={`${
               editMode ? "max-h-[600px]" : "max-h-[400px]"
@@ -171,9 +302,7 @@ const SelectedLocalTaskModal = ({
                 {processTaskDescription(selectedTask.description)}
               </p>
             ) : (
-              <span className="text-gray-400" style={{ fontStyle: "italic" }}>
-                No description
-              </span>
+              <span className="text-gray-400 italic">No description</span>
             )}
           </div>
         </div>

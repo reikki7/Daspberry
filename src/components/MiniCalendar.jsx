@@ -475,7 +475,10 @@ const MiniCalendar = () => {
           });
 
           const upcomingEvents = currentMonthEvents
-            .filter((item) => new Date(item.start) >= today)
+            .filter((item) => {
+              const eventDate = zeroTime(new Date(item.start));
+              return eventDate > zeroTime(today);
+            })
             .sort((a, b) => new Date(a.start) - new Date(b.start));
 
           const pastEvents = currentMonthEvents

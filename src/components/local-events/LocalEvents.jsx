@@ -11,8 +11,10 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { PlusCircle, CalendarFold } from "lucide-react";
 import FallbackImage from "../../assets/fallback-image-events.jpg";
 import eventBus from "../../utils/eventBus";
+import EventMap from "./EventMap";
 
 const LocalEventCards = lazy(() => import("./LocalEventCards"));
+const LocalMapEventCards = lazy(() => import("./LocalMapEventCards"));
 const LocalPastEventModal = lazy(() => import("./LocalPastEventModal"));
 const SelectedLocalEventModal = lazy(() => import("./SelectedLocalEventModal"));
 const NewLocalEventModal = lazy(() => import("./NewLocalEventModal"));
@@ -26,6 +28,7 @@ const LocalEvents = () => {
   const [editableEvent, setEditableEvent] = useState({});
   const [isEventAvailable, setIsEventAvailable] = useState(false);
   const [pastEventsModalOpen, setPastEventsModalOpen] = useState(false);
+  const [isMapExisting, setIsMapExisting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleContainerClick = (ref) => {
@@ -66,6 +69,9 @@ const LocalEvents = () => {
 
   useEffect(() => {
     loadEvents();
+    import("./LocalPastEventModal");
+    import("./SelectedLocalEventModal");
+    import("./NewLocalEventModal");
   }, []);
 
   // Check if there are any upcoming events
@@ -174,7 +180,9 @@ const LocalEvents = () => {
           )}&image_type=photo&pretty=true`
         );
         const data = await response.json();
-        if (data.hits?.length > 0) return data.hits[0].webformatURL;
+        if (data.hits?.length > 0) {
+          return data.hits[0].fullHDURL || data.hits[0].largeImageURL;
+        }
       } catch (error) {
         console.error("Error fetching image from Pixabay:", error);
       }
@@ -238,28 +246,30 @@ const LocalEvents = () => {
 
   return (
     <div>
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl flex gap-4 items-center">
-          <CalendarFold />
-          Upcoming Events
-        </h1>
-        <div className="flex rounded-lg overflow-hidden">
-          <button
-            onClick={() => setPastEventsModalOpen(true)}
-            className="flex items-center justify-center px-4 py-1 text-sm font-medium bg-purple-500/30 hover:bg-purple-500/40 text-white shadow-md hover:shadow-lg transition-all duration-300"
-          >
-            <CalendarFold size={18} />
-          </button>
+      <EventMap setIsMapExisting={setIsMapExisting} />
+      <div>
+        <div className="flex justify-between mb-3">
+          <h1 className="text-xl flex gap-4 items-center">
+            <CalendarFold />
+            Upcoming Events
+          </h1>
+          <div className="flex rounded-lg overflow-hidden">
+            <button
+              onClick={() => setPastEventsModalOpen(true)}
+              className="flex items-center justify-center px-3 py-1 text-sm font-medium bg-purple-500/30 hover:bg-purple-500/40 text-white shadow-md hover:shadow-lg transition-all duration-300"
+            >
+              <CalendarFold size={16} />
+            </button>
 
-          {/* Add Event Button */}
-          <button
-            onClick={() => setNewEventModalOpen(true)}
-            className="flex items-center justify-center px-4 py-1 text-sm font-medium bg-blue-500/40 text-white hover:bg-blue-500/50 shadow-md hover:shadow-lg transition-all duration-300"
-          >
-            <PlusCircle size={16} />
-            <span className="ml-2 hidden sm:inline">Add Event</span>
-          </button>
-          {/* Clear Events
+            {/* Add Event Button */}
+            <button
+              onClick={() => setNewEventModalOpen(true)}
+              className="flex items-center justify-center px-3 py-1 text-sm font-medium bg-blue-500/40 text-white hover:bg-blue-500/50 shadow-md hover:shadow-lg transition-all duration-300"
+            >
+              <PlusCircle size={16} />
+              <span className="ml-2 hidden sm:inline mt-0.5">Add Event</span>
+            </button>
+            {/* Clear Events
         <button
         onClick={clearEvents}
         className="flex items-center gap-2 text-sm overflow-hidden bg-red-500/20 hover:bg-red-600/20 duration-300 text-white px-3 py-1 rounded-l-md"
@@ -267,67 +277,79 @@ const LocalEvents = () => {
         <Trash2 size={18} className="mr-2" />{" "}
         <p className="text-sm mt-0.5">Clear Events</p>
         </button> */}
+          </div>
         </div>
+
+        {!isEventAvailable && (
+          <div className="flex items-center justify-center h-[74px] w-[1240px] text-white">
+            <p className="text-md">
+              No upcoming events. Click on the &quot;Add Event&quot; button to
+              create a new event.
+            </p>
+          </div>
+        )}
+        <Suspense fallback={null}>
+          {/* Events Cards */}
+          {isMapExisting ? (
+            <LocalMapEventCards
+              paginatedEvents={paginatedEvents}
+              setSelectedEvent={setSelectedEvent}
+              imageCache={imageCache}
+              containerHeight={containerHeight}
+              getTitleSize={getTitleSize}
+              getTimeRemainingLabel={getTimeRemainingLabel}
+            />
+          ) : (
+            <LocalEventCards
+              paginatedEvents={paginatedEvents}
+              setSelectedEvent={setSelectedEvent}
+              imageCache={imageCache}
+              containerHeight={containerHeight}
+              getTitleSize={getTitleSize}
+              getTimeRemainingLabel={getTimeRemainingLabel}
+            />
+          )}
+
+          <PaginationControls
+            paginatedEvents={paginatedEvents}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+          />
+
+          {/* Past Events Modal */}
+          {pastEventsModalOpen && (
+            <LocalPastEventModal
+              setPastEventsModalOpen={setPastEventsModalOpen}
+              setSelectedEvent={setSelectedEvent}
+              events={events}
+            />
+          )}
+
+          {/* Selected Event Modal */}
+          {selectedEvent && (
+            <SelectedLocalEventModal
+              selectedEvent={selectedEvent}
+              setEditableEvent={setEditableEvent}
+              editableEvent={editableEvent}
+              setSelectedEvent={setSelectedEvent}
+              saveEvents={saveEvents}
+              setEvents={setEvents}
+              events={events}
+            />
+          )}
+
+          {/* New Event Modal */}
+          {newEventModalOpen && (
+            <NewLocalEventModal
+              setNewEventModalOpen={setNewEventModalOpen}
+              handleContainerClick={handleContainerClick}
+              saveEvents={saveEvents}
+              setEvents={setEvents}
+              events={events}
+            />
+          )}
+        </Suspense>
       </div>
-
-      {!isEventAvailable && (
-        <div className="flex items-center justify-center h-[74px] w-[1240px] text-white">
-          <p className="text-md">
-            No upcoming events. Click on the &quot;Add Event&quot; button to
-            create a new event.
-          </p>
-        </div>
-      )}
-      <Suspense fallback={null}>
-        {/* Events Cards */}
-        <LocalEventCards
-          paginatedEvents={paginatedEvents}
-          setSelectedEvent={setSelectedEvent}
-          imageCache={imageCache}
-          containerHeight={containerHeight}
-          getTitleSize={getTitleSize}
-          getTimeRemainingLabel={getTimeRemainingLabel}
-        />
-
-        <PaginationControls
-          paginatedEvents={paginatedEvents}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-        />
-
-        {/* Past Events Modal */}
-        {pastEventsModalOpen && (
-          <LocalPastEventModal
-            setPastEventsModalOpen={setPastEventsModalOpen}
-            setSelectedEvent={setSelectedEvent}
-            events={events}
-          />
-        )}
-
-        {/* Selected Event Modal */}
-        {selectedEvent && (
-          <SelectedLocalEventModal
-            selectedEvent={selectedEvent}
-            setEditableEvent={setEditableEvent}
-            editableEvent={editableEvent}
-            setSelectedEvent={setSelectedEvent}
-            saveEvents={saveEvents}
-            setEvents={setEvents}
-            events={events}
-          />
-        )}
-
-        {/* New Event Modal */}
-        {newEventModalOpen && (
-          <NewLocalEventModal
-            setNewEventModalOpen={setNewEventModalOpen}
-            handleContainerClick={handleContainerClick}
-            saveEvents={saveEvents}
-            setEvents={setEvents}
-            events={events}
-          />
-        )}
-      </Suspense>
     </div>
   );
 };

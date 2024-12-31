@@ -15,11 +15,9 @@ import "react-toastify/dist/ReactToastify.css";
 import { debounce } from "lodash";
 import eventBus from "../../utils/eventBus";
 
-const AsanaTaskList = lazy(() => import("../tasks/AsanaTaskList"));
-const SelectedAsanaTaskModal = lazy(() =>
-  import("../tasks/SelectedAsanaTaskModal")
-);
-const NewAsanaTaskModal = lazy(() => import("../tasks/NewAsanaTaskModal"));
+const AsanaTaskList = lazy(() => import("./AsanaTaskList"));
+const SelectedAsanaTaskModal = lazy(() => import("./SelectedAsanaTaskModal"));
+const NewAsanaTaskModal = lazy(() => import("./NewAsanaTaskModal"));
 
 const AsanaTasks = ({ isTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
@@ -468,6 +466,8 @@ const AsanaTasks = ({ isTaskAvailable }) => {
   // Fetch tasks on initial load
   useEffect(() => {
     fetchTasks(fetchStrategy);
+    import("./NewAsanaTaskModal");
+    import("./SelectedAsanaTaskModal");
   }, [fetchStrategy, fetchTasks]);
 
   if (error)
@@ -526,7 +526,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
       <Suspense fallback={null}>
         {/* Task List */}
         <div
-          className={`gap-4 w-full flex flex-col ${
+          className={`gap-4 mb-10 w-full flex flex-col ${
             isTaskAvailable ? "h-[calc(100vh-500px)]" : "h-[calc(100vh-250px)]"
           } overflow-auto`}
         >

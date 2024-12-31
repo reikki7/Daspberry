@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import MiniCalendar from "../components/MiniCalendar";
-import MusicPlayer from "../components/MusicPlayer";
+import MusicPlayer from "../components/music-player/MusicPlayer";
 import ProjectWheel from "../components/ProjectWheel";
 import UpcomingThings from "../components/UpcomingThings";
 

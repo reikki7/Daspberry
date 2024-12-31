@@ -15,7 +15,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Howl } from "howler";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import artDefault from "../assets/art-default.jpg";
+import artDefault from "../../assets/art-default.jpg";
 import ProgressBar from "./ProgressBar";
 import VolumeSlider from "./VolumeSlider";
 import MusicMenuModal from "./MusicMenuModal";

@@ -352,7 +352,7 @@ const ProjectWheel = () => {
           </div>
         )}
         <div className="flex flex-col justify-center items-center w-full p-2 bg-gradient-to-r from-gray-950/10 via-blue-950/30 to-gray-950/10 rounded-2xl shadow-lg">
-          <div className="flex flex-col gap-5 p-4 -mt-3">
+          <div className="flex flex-col gap-5 p-4 -mt-2.5">
             {/* GitHub Button */}
             <button
               onClick={toggleGithub}

@@ -96,8 +96,15 @@ const NewAsanaTaskModal = ({
     toast.dismiss();
   };
 
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      clearAllFields();
+      setNew
+    }
+  };
+
   return (
-    <div className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-sm bg-black/60 flex items-center justify-center z-50 px-4 py-8">
+    <div className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-sm bg-black/60 flex items-center justify-center z-50 px-4 py-8" onClick={handleOverlayClick}>
       <div className="bg-gray-950/80 rounded-2xl overflow-hidden max-w-4xl w-full max-h-full flex flex-col border border-white/10 shadow-2xl">
         <div
           data-tauri-drag-region

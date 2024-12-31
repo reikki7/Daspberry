@@ -37,6 +37,7 @@
     "react-fancy-circular-carousel": "^1.0.8",
     "react-icons": "^5.4.0",
     "react-router-dom": "^6.28.1",
+    "react-select": "^5.9.0",
     "react-spinners": "^0.14.1",
     "react-syntax-highlighter": "^15.6.1",
     "react-toastify": "^10.0.6",

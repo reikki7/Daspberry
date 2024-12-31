@@ -31,6 +31,7 @@ const GoogleCalendarEvents = () => {
 
   // Load events from localStorage on component mount
   useEffect(() => {
+    import("./SelectedGoogleEventModal");
     const cachedEvents = JSON.parse(localStorage.getItem(CACHE_KEY)) || [];
     setEvents(cachedEvents);
 
@@ -186,41 +187,40 @@ const GoogleCalendarEvents = () => {
   }, [events]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-[213px] relative">
       <div className="flex justify-between items-center mb-3">
-        <div className="flex items-center gap-4 mb-1">
-          <img src={GoogleCalendarIcon} alt="Google Calendar" className="w-8" />
-          <h2 className="text-2xl text-white">Google Calendar</h2>
-        </div>
-        <div className="flex items-center rounded-lg overflow-hidden">
-          {tokens && (
-            <>
-              {/* Google Auth Button */}
-              <button
-                onClick={getAuthUrl}
-                className={`flex group rounded-l-lg bg-white items-center gap-2 text-sm ${
-                  isAuthenticated ? "saturate-100" : "saturate-0"
-                } duration-300 text-white px-3 py-2 `}
-              >
-                <FcGoogle
-                  className="group-hover:-hue-rotate-90 group-hover:-rotate-[25deg] duration-300"
-                  size={16}
-                />
-              </button>
+        <div className="flex items-center gap-2">
+          <img src={GoogleCalendarIcon} alt="Google Calendar" className="w-5" />
+          <h2 className="text-lg text-white">Google Calendar</h2>
+          <div className="flex items-center rounded-lg overflow-hidden">
+            {tokens && (
+              <>
+                {/* Google Auth Button */}
+                <button
+                  onClick={getAuthUrl}
+                  className={`flex group mr-2 ml-1 items-center text-sm ${
+                    isAuthenticated ? "saturate-100" : "saturate-0"
+                  } duration-300 text-white `}
+                >
+                  <FcGoogle
+                    className="group-hover:-hue-rotate-90 group-hover:-rotate-[25deg] duration-300"
+                    size={16}
+                  />
+                </button>
 
-              {/* Refresh Events Button */}
-              <button
-                onClick={fetchEvents}
-                className="flex items-center px-4 py-[7px] group bg-indigo-500/30 hover:bg-indigo-500/50 shadow-md hover:shadow-lg text-sm transition-all duration-300"
-              >
-                <RefreshCw
-                  size={16}
-                  className="mr-2 -mt-0.5 duration-300 group-hover:rotate-180"
-                />
-                Refresh
-              </button>
-            </>
-          )}
+                {/* Refresh Events Button */}
+                <button
+                  onClick={fetchEvents}
+                  className="flex items-center group text-sm transition-all duration-300"
+                >
+                  <RefreshCw
+                    size={16}
+                    className="-mt-0.5 duration-300 group-hover:rotate-180"
+                  />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -247,16 +247,16 @@ const GoogleCalendarEvents = () => {
               <input
                 type="text"
                 placeholder="Enter code"
-                className="w-[565px] px-4 py-2 bg-gray-950/40 text-white border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:outline-none placeholder-gray-400 transition-all duration-300"
+                className="w-[137px] px-3 py-2 bg-gray-950/40 text-white placeholder:text-sm text-sm border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:outline-none placeholder-gray-400 transition-all duration-300"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 onKeyDown={(e) => e.stopPropagation()}
               />
               <button
-                className="px-5 py-2.5 bg-gray-950/40 text-white font-semibold text-sm rounded-lg hover:bg-gray-950/60 shadow-md hover:shadow-lg transition-all duration-300"
+                className="px-3 py-2 bg-gray-950/40 text-white font-semibold text-sm rounded-lg hover:bg-gray-950/60 shadow-md hover:shadow-lg transition-all duration-300"
                 onClick={getAccessToken}
               >
-                Submit Code
+                Submit
               </button>
             </div>
           )}
@@ -274,7 +274,7 @@ const GoogleCalendarEvents = () => {
       ) : (
         <div
           data-tauri-drag-region
-          className="flex items-center mt-40 justify-center"
+          className="absolute inset-0 flex items-center justify-center z-50"
         >
           <ScaleLoader color="#8dccff" />
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
-import artDefault from "../assets/art-default.jpg";
+import artDefault from "../../assets/art-default.jpg";
 import {
   faCompactDisc,
   faPlay,
