@@ -1,18 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import eventBus from "../../utils/eventBus";
-import { useLoadScript } from "@react-google-maps/api";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
 } from "use-places-autocomplete";
-const libraries = ["places"];
 
 const NewLocalEventModal = ({
   setNewEventModalOpen,
   saveEvents,
   setEvents,
   events = [],
+  isLoaded,
 }) => {
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -34,11 +33,6 @@ const NewLocalEventModal = ({
   const endDateRef = useRef(null);
   const timeStartRef = useRef(null);
   const timeEndRef = useRef(null);
-
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-    libraries,
-  });
 
   const {
     ready,

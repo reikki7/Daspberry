@@ -7,8 +7,6 @@ import usePlacesAutocomplete, {
   getLatLng,
 } from "use-places-autocomplete";
 
-const libraries = ["places"];
-
 const SelectedLocalEventModal = ({
   selectedEvent,
   setEditableEvent,
@@ -17,6 +15,7 @@ const SelectedLocalEventModal = ({
   saveEvents,
   setEvents,
   events = [],
+  isLoaded,
 }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -27,11 +26,6 @@ const SelectedLocalEventModal = ({
   const endDateRef = useRef(null);
   const timeStartRef = useRef(null);
   const timeEndRef = useRef(null);
-
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-    libraries,
-  });
 
   const {
     ready,
@@ -372,7 +366,7 @@ const SelectedLocalEventModal = ({
               onKeyDown={(e) => {
                 e.stopPropagation();
               }}
-              className="w-full bg-gray-800/30  h-96 text-white p-3 rounded-lg border border-white/10 focus:border-white/20 placeholder-white/40 outline-none resize-none"
+              className="w-full bg-gray-800/30 h-96 text-white p-3 rounded-lg border border-white/10 focus:border-white/20 placeholder-white/40 outline-none resize-none"
             />
           ) : (
             <div className="w-full h-96 bg-gray-800/30  text-white p-3 rounded-lg border border-white/10 hover:border-white/20 transition-all">

@@ -165,7 +165,7 @@ const LocalEventCards = ({
                   className="flex flex-col text-center 
                   bg-gray-950/20 border border-white/30 
                   rounded-xl overflow-hidden w-12 min-w-[3rem] 
-                  items-center text-white shadow-lg "
+                  items-center text-white shadow-lg"
                 >
                   <div className="bg-gray-950/30 w-full border-b-2 border-white/10 py-1 text-xs uppercase tracking-wider">
                     {new Date(event.date_start).toLocaleDateString("en-US", {

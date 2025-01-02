@@ -39,7 +39,7 @@ const LocalMapEventCards = ({
                   <div
                     className="flex flex-col text-center 
                 overflow-hidden w-24 min-w-[5rem] 
-                items-center shadow-md"
+                items-center"
                   >
                     <div className="w-full flex flex-col items-center text-sm uppercase tracking-wide font-semibold">
                       <div className="text-5xl font-bold py-2">

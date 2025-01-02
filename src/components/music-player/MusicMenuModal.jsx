@@ -10,6 +10,7 @@ import {
   faShuffle,
   faRepeat,
 } from "@fortawesome/free-solid-svg-icons";
+import { FolderSync, ArrowDownAZ, ArrowUpZA } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 const MusicMenuModal = ({
@@ -36,6 +37,7 @@ const MusicMenuModal = ({
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isUsingArrowKeys, setIsUsingArrowKeys] = useState(false);
+  const [isDescending, setIsDescending] = useState(false);
 
   const listRef = useRef(null);
   const itemRefs = useRef([]);
@@ -70,6 +72,18 @@ const MusicMenuModal = ({
       : false;
 
     return titleMatch || artistMatch;
+  });
+
+  // Modify the sorting logic
+  const sortedMusic = [...filteredMusic].sort((a, b) => {
+    const titleA =
+      metadata[musicFiles.indexOf(a)]?.title || a.name.replace(/^\{|\}$/g, "");
+    const titleB =
+      metadata[musicFiles.indexOf(b)]?.title || b.name.replace(/^\{|\}$/g, "");
+
+    return isDescending
+      ? titleB.localeCompare(titleA)
+      : titleA.localeCompare(titleB);
   });
 
   const handleOverlayClick = (e) => {
@@ -341,8 +355,8 @@ const MusicMenuModal = ({
           )}
 
           {/* Search Bar */}
-          <div className="p-3">
-            <div className="relative">
+          <div className="p-3 flex gap-3 items-center">
+            <div className="relative w-full">
               <input
                 ref={searchInputRef}
                 type="text"
@@ -369,6 +383,14 @@ const MusicMenuModal = ({
                 </button>
               )}
             </div>
+
+            {/* Toggle Sort Button */}
+            <button
+              onClick={() => setIsDescending((prev) => !prev)}
+              className="w-5 h-5 flex items-center justify-center text-white/70 hover:text-white duration-200 mr-2 focus:outline-none"
+            >
+              {isDescending ? <ArrowUpZA /> : <ArrowDownAZ />}
+            </button>
           </div>
         </div>
 
@@ -382,7 +404,7 @@ const MusicMenuModal = ({
           aria-activedescendant={`song-${focusedIndex}`}
         >
           <div className="grid grid-cols-2 gap-1">
-            {filteredMusic.map((file, index) => {
+            {sortedMusic.map((file, index) => {
               const originalIndex = musicFiles.findIndex(
                 (musicFile) => musicFile.path === file.path
               );

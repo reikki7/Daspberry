@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import { Link } from "react-router-dom";
 
 // Lazy-load the modal for individual task editing
 const SelectedLocalTaskModal = lazy(() =>
@@ -36,6 +37,7 @@ const Projects = () => {
   // Group tasks by project
   useEffect(() => {
     const groups = tasks.reduce((acc, task) => {
+      if (task.completed) return acc; // skip completed tasks
       if (!task.project) return acc; // skip tasks with no project
       if (!acc[task.project]) acc[task.project] = [];
       acc[task.project].push(task);
@@ -44,7 +46,6 @@ const Projects = () => {
     setGroupedTasks(groups);
   }, [tasks]);
 
-  // --- RENAME PROJECT LOGIC ---
   const renameProject = async (oldProjectName, newProjectName) => {
     // Guard: skip if empty or same name
     if (!newProjectName.trim() || newProjectName === oldProjectName) return;
@@ -142,18 +143,60 @@ const Projects = () => {
   };
 
   return (
-    <div className="p-4 text-white">
-      <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 w-full space-y-5">
-        {Object.entries(groupedTasks).map(([projectName, projectTasks]) => (
-          <ProjectCard
-            key={projectName}
-            projectName={projectName}
-            projectTasks={projectTasks}
-            renameProject={renameProject}
-            handleTaskClick={handleTaskClick}
-          />
-        ))}
-      </div>
+    <div
+      className={`text-white ${
+        Object.keys(groupedTasks).length === 0 && "-mt-16"
+      }`}
+    >
+      {/* Check if there are no projects */}
+      {Object.keys(groupedTasks).length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-screen">
+          {/* Icon */}
+          <div className="bg-cyan-600/10 text-cyan-400 p-4 rounded-full shadow-lg mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-12 w-12"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9.75 11L12 13.25L14.25 11M12 6V13.25M15.75 9.75L19.5 6.5M8.25 9.75L4.5 6.5M8.25 14.25L4.5 17.5M15.75 14.25L19.5 17.5"
+              />
+            </svg>
+          </div>
+          {/* Message */}
+          <h1 className="text-3xl font-bold text-gray-200 mb-2">
+            No Ongoing Projects
+          </h1>
+          <p className="text-gray-400 text-lg text-center max-w-md">
+            It seems like you don’t have any active projects. Assign a task to a
+            project and they will show up here!
+          </p>
+          {/* Call-to-Action Button */}
+          <Link
+            to="/tasks"
+            className="mt-6 px-6 py-3 bg-cyan-500/30 text-white font-medium rounded-full shadow-md hover:bg-cyan-700 transition duration-300"
+          >
+            Go to Tasks
+          </Link>
+        </div>
+      ) : (
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 w-full space-y-5">
+          {Object.entries(groupedTasks).map(([projectName, projectTasks]) => (
+            <ProjectCard
+              key={projectName}
+              projectName={projectName}
+              projectTasks={projectTasks}
+              renameProject={renameProject}
+              handleTaskClick={handleTaskClick}
+            />
+          ))}
+        </div>
+      )}
 
       <Suspense>
         {selectedTask && (

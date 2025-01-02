@@ -8,7 +8,9 @@ import React, {
   Suspense,
 } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import { useLoadScript } from "@react-google-maps/api";
 import { PlusCircle, CalendarFold } from "lucide-react";
+import { ScaleLoader } from "react-spinners";
 import FallbackImage from "../../assets/fallback-image-events.jpg";
 import eventBus from "../../utils/eventBus";
 import EventMap from "./EventMap";
@@ -20,6 +22,8 @@ const SelectedLocalEventModal = lazy(() => import("./SelectedLocalEventModal"));
 const NewLocalEventModal = lazy(() => import("./NewLocalEventModal"));
 const PaginationControls = lazy(() => import("./PaginationControls"));
 
+const libraries = ["places", "marker"];
+
 const LocalEvents = () => {
   const [events, setEvents] = useState([]);
   const [newEventModalOpen, setNewEventModalOpen] = useState(false);
@@ -30,6 +34,12 @@ const LocalEvents = () => {
   const [pastEventsModalOpen, setPastEventsModalOpen] = useState(false);
   const [isMapExisting, setIsMapExisting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_API_KEY,
+    libraries,
+    preventGoogleFontsLoading: true,
+  });
 
   const handleContainerClick = (ref) => {
     if (ref.current) {
@@ -246,7 +256,11 @@ const LocalEvents = () => {
 
   return (
     <div>
-      <EventMap setIsMapExisting={setIsMapExisting} />
+      <EventMap
+        setIsMapExisting={setIsMapExisting}
+        isLoaded={isLoaded}
+        loadError={loadError}
+      />
       <div>
         <div className="flex justify-between mb-3">
           <h1 className="text-xl flex gap-4 items-center">
@@ -288,7 +302,13 @@ const LocalEvents = () => {
             </p>
           </div>
         )}
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center mt-20">
+              <ScaleLoader color="#8dccff" />
+            </div>
+          }
+        >
           {/* Events Cards */}
           {isMapExisting ? (
             <LocalMapEventCards
@@ -335,6 +355,7 @@ const LocalEvents = () => {
               saveEvents={saveEvents}
               setEvents={setEvents}
               events={events}
+              isLoaded={isLoaded}
             />
           )}
 
@@ -346,6 +367,7 @@ const LocalEvents = () => {
               saveEvents={saveEvents}
               setEvents={setEvents}
               events={events}
+              isLoaded={isLoaded}
             />
           )}
         </Suspense>
