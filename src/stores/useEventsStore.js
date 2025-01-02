@@ -1,4 +1,3 @@
-// useEventsStore.js
 import { create } from "zustand";
 
 const useEventsStore = create((set) => ({

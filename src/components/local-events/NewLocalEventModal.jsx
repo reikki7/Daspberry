@@ -5,6 +5,7 @@ import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
 } from "use-places-autocomplete";
+import { syncLocalEventsWithFirestore } from "../../utils/syncLocalEvents";
 
 const NewLocalEventModal = ({
   setNewEventModalOpen,
@@ -23,6 +24,7 @@ const NewLocalEventModal = ({
     location: "",
     latitude: null,
     longitude: null,
+    updated_at: "",
   });
 
   const [notification, setNotification] = useState(null);
@@ -173,7 +175,7 @@ const NewLocalEventModal = ({
     setTimeout(() => setNotification(null), duration);
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (!newEvent.title.trim()) {
       showNotification("Event title cannot be empty.");
       return;
@@ -182,10 +184,11 @@ const NewLocalEventModal = ({
     const newEventEntry = {
       id: uuidv4(),
       ...newEvent,
+      updated_at: new Date().toISOString(),
     };
     const updatedEvents = [...events, newEventEntry];
     setEvents(updatedEvents);
-    saveEvents(updatedEvents);
+    await saveEvents(updatedEvents);
     setNewEvent({
       title: "",
       description: "",
@@ -197,6 +200,12 @@ const NewLocalEventModal = ({
       latitude: null,
       longitude: null,
     });
+
+    if (navigator.onLine) {
+      console.log("Syncing with Firestore...");
+      await syncLocalEventsWithFirestore(updatedEvents, setEvents, saveEvents);
+    }
+
     eventBus.emit("events_updated");
     setNewEventModalOpen(false);
   };

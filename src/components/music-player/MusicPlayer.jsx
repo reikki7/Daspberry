@@ -444,7 +444,7 @@ const MusicPlayer = () => {
         if (url !== artDefault) URL.revokeObjectURL(url);
       });
     };
-  }, []); // Run this only once
+  }, []);
 
   const updateProgress = () => {
     if (currentSound && currentSound.playing()) {
@@ -670,7 +670,7 @@ const MusicPlayer = () => {
       event.preventDefault();
       const delta = Math.sign(event.deltaY);
       setVolume((prevVolume) => {
-        let newVolume = prevVolume - delta * 0.05; // Adjust the step size as needed
+        let newVolume = prevVolume - delta * 0.05;
         if (newVolume < 0) newVolume = 0;
         if (newVolume > 1) newVolume = 1;
         return newVolume;

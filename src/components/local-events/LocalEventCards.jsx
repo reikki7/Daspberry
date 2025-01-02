@@ -125,38 +125,6 @@ const LocalEventCards = ({
                     </span>
                   </div>
                 )}
-
-                {/* Ongoing Badge */}
-                {isOngoing(event) && (
-                  <div className="mt-2 text-xs bg-cyan-600/30 text-cyan-200 px-2 py-1 rounded-md inline-block">
-                    Ongoing until{" "}
-                    <span className="font-bold">
-                      {(() => {
-                        const endDateTime = new Date(
-                          `${event.date_end || event.date_start}T${
-                            event.time_end || "23:59"
-                          }`
-                        );
-                        const now = new Date();
-
-                        // Check if the event ends today
-                        const isToday =
-                          endDateTime.toDateString() === now.toDateString();
-
-                        return isToday
-                          ? endDateTime.toLocaleTimeString("en-US", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hourCycle: "h23", // 24-hour format
-                            }) // Format as hh:mm
-                          : endDateTime.toLocaleDateString("en-US", {
-                              day: "2-digit",
-                              month: "short",
-                            }); // Format as dd Month
-                      })()}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Date Section */}

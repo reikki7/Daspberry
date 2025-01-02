@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { GoogleMap, useLoadScript } from "@react-google-maps/api";
+import { GoogleMap } from "@react-google-maps/api";
 import { invoke } from "@tauri-apps/api/tauri";
 import eventBus from "../../utils/eventBus";
 import GoogleCalendarEvents from "../google-events/GoogleCalendarEvents";
@@ -9,6 +9,8 @@ const EventMap = ({ setIsMapExisting, isLoaded, loadError }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
+
+  const defaultCenter = { lat: -6.2088, lng: 106.8456 };
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -151,6 +153,7 @@ const EventMap = ({ setIsMapExisting, isLoaded, loadError }) => {
         onLoad={handleMapLoad}
         onUnmount={handleMapUnmount}
         zoom={11}
+        center={events.length > 0 ? undefined : defaultCenter}
         options={{
           mapId: import.meta.env.VITE_GOOGLE_MAPS_ID,
         }}

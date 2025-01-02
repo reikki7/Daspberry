@@ -23,13 +23,13 @@ import "react-toastify/dist/ReactToastify.css";
 import eventBus from "../../utils/eventBus";
 
 const LocalTaskList = lazy(() => import("./LocalTaskList"));
-const SelectedLocalTaskModal = lazy(() => import("./SelectedLocalTaskModal"));
-const CompletedLocalTaskModal = lazy(() => import("./CompletedLocalTaskModal"));
-const NewLocalTaskModal = lazy(() => import("./NewLocalTaskModal"));
+import SelectedLocalTaskModal from "./SelectedLocalTaskModal";
+import CompletedLocalTaskModal from "./CompletedLocalTaskModal";
+import NewLocalTaskModal from "./NewLocalTaskModal";
 
 const LocalTasks = ({ setIsTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]); // ← new state for project names
+  const [projects, setProjects] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
   const [completedTasksModalOpen, setCompletedTasksModalOpen] = useState(false);
@@ -74,9 +74,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
   useEffect(() => {
     loadTasks();
-    import("./SelectedLocalTaskModal");
-    import("./CompletedLocalTaskModal");
-    import("./NewLocalTaskModal");
   }, []);
 
   useEffect(() => {
@@ -124,7 +121,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       title: newTask.title,
       date: newTask.date || "",
       description: newTask.description,
-      project: newTask.project || "", // store as "" if none set
+      project: newTask.project || "",
       completed: false,
       completed_on: null,
     };
@@ -151,9 +148,9 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   const processTaskDescription = (notes) => {
     if (!notes) return null;
     return notes
-      .split(/(`{2}[\s\S]*?`{2}|https?:\/\/[^\s]+|\n|- )/g)
+      .split(/(`{3}[\s\S]*?`{3}|https?:\/\/[^\s]+|\n|- )/g)
       .map((segment, index, array) => {
-        const codeBlockMatch = segment.match(/`{2}(\w+)?\n([\s\S]*?)\n`{2}/);
+        const codeBlockMatch = segment.match(/`{3}(\w+)?\n([\s\S]*?)\n`{3}/);
         if (codeBlockMatch) {
           const language = codeBlockMatch[1]?.trim() || "text";
           const code = codeBlockMatch[2]?.trim();
@@ -450,57 +447,58 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
           goToNextPage={goToNextPage}
           setCurrentPage={setCurrentPage}
           totalIncompleteTasks={totalIncompleteTasks}
+          processTaskDescription={processTaskDescription}
         />
-
-        {/* Task Modal */}
-        {selectedTask && (
-          <SelectedLocalTaskModal
-            selectedTask={selectedTask}
-            setSelectedTask={setSelectedTask}
-            handleTitleChange={handleTitleChange}
-            handleUpdateTask={handleUpdateTask}
-            closeNewTaskModal={closeNewTaskModal}
-            errorMessage={errorMessage}
-            editMode={editMode}
-            setEditMode={setEditMode}
-            handleContainerClick={handleContainerClick}
-            dateInputRef={dateInputRef}
-            handleDeleteTask={handleDeleteTask}
-            taskIsComplete={taskIsComplete}
-            handleTaskComplete={handleTaskComplete}
-            processTaskDescription={processTaskDescription}
-            projects={projects}
-            setProjects={setProjects}
-          />
-        )}
-
-        {/* New Task Modal */}
-        {newTaskModalOpen && (
-          <NewLocalTaskModal
-            newTask={newTask}
-            setNewTask={setNewTask}
-            handleAddTask={handleAddTask}
-            clearAllFields={clearAllFields}
-            setNewTaskModalOpen={setNewTaskModalOpen}
-            dateInputRef={dateInputRef}
-            handleContainerClick={handleContainerClick}
-            notification={notification}
-            setNotification={setNotification}
-            projects={projects}
-            setProjects={setProjects}
-          />
-        )}
-
-        {/* Completed Tasks Modal */}
-        {completedTasksModalOpen && (
-          <CompletedLocalTaskModal
-            tasks={tasks}
-            setCompletedTasksModalOpen={setCompletedTasksModalOpen}
-            handleTaskComplete={handleTaskComplete}
-            processTaskDescription={processTaskDescription}
-          />
-        )}
       </Suspense>
+
+      {/* Task Modal */}
+      {selectedTask && (
+        <SelectedLocalTaskModal
+          selectedTask={selectedTask}
+          setSelectedTask={setSelectedTask}
+          handleTitleChange={handleTitleChange}
+          handleUpdateTask={handleUpdateTask}
+          closeNewTaskModal={closeNewTaskModal}
+          errorMessage={errorMessage}
+          editMode={editMode}
+          setEditMode={setEditMode}
+          handleContainerClick={handleContainerClick}
+          dateInputRef={dateInputRef}
+          handleDeleteTask={handleDeleteTask}
+          taskIsComplete={taskIsComplete}
+          handleTaskComplete={handleTaskComplete}
+          processTaskDescription={processTaskDescription}
+          projects={projects}
+          setProjects={setProjects}
+        />
+      )}
+
+      {/* New Task Modal */}
+      {newTaskModalOpen && (
+        <NewLocalTaskModal
+          newTask={newTask}
+          setNewTask={setNewTask}
+          handleAddTask={handleAddTask}
+          clearAllFields={clearAllFields}
+          setNewTaskModalOpen={setNewTaskModalOpen}
+          dateInputRef={dateInputRef}
+          handleContainerClick={handleContainerClick}
+          notification={notification}
+          setNotification={setNotification}
+          projects={projects}
+          setProjects={setProjects}
+        />
+      )}
+
+      {/* Completed Tasks Modal */}
+      {completedTasksModalOpen && (
+        <CompletedLocalTaskModal
+          tasks={tasks}
+          setCompletedTasksModalOpen={setCompletedTasksModalOpen}
+          handleTaskComplete={handleTaskComplete}
+          processTaskDescription={processTaskDescription}
+        />
+      )}
     </div>
   );
 };

@@ -8,6 +8,8 @@ import React, {
   Suspense,
 } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import { syncLocalEventsWithFirestore } from "../../utils/syncLocalEvents";
+import { db } from "../../config/firebase";
 import { useLoadScript } from "@react-google-maps/api";
 import { PlusCircle, CalendarFold } from "lucide-react";
 import { ScaleLoader } from "react-spinners";
@@ -82,6 +84,20 @@ const LocalEvents = () => {
     import("./LocalPastEventModal");
     import("./SelectedLocalEventModal");
     import("./NewLocalEventModal");
+  }, []);
+
+  // 3) Sync whenever user goes back online
+  useEffect(() => {
+    async function handleOnline() {
+      await syncLocalEventsWithFirestore(events, setEvents, saveEvents);
+    }
+
+    if (navigator.onLine) {
+      handleOnline();
+    }
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
   }, []);
 
   // Check if there are any upcoming events
@@ -315,7 +331,6 @@ const LocalEvents = () => {
               paginatedEvents={paginatedEvents}
               setSelectedEvent={setSelectedEvent}
               imageCache={imageCache}
-              containerHeight={containerHeight}
               getTitleSize={getTitleSize}
               getTimeRemainingLabel={getTimeRemainingLabel}
             />

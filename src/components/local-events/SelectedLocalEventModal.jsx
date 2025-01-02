@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { ExternalLink, Eye } from "lucide-react";
 import eventBus from "../../utils/eventBus";
-import { useLoadScript } from "@react-google-maps/api";
+import { deleteDoc, doc } from "firebase/firestore";
+import { db } from "../../config/firebase";
+import { syncLocalEventsWithFirestore } from "../../utils/syncLocalEvents";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
@@ -125,7 +127,7 @@ const SelectedLocalEventModal = ({
     setEditableEvent((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editableEvent.title || editableEvent.title.trim() === "") {
       showNotification("Event title cannot be empty.");
       return;
@@ -141,13 +143,20 @@ const SelectedLocalEventModal = ({
             date_end: editableEvent.date_end || null,
             time_start: editableEvent.time_start || null,
             time_end: editableEvent.time_end || null,
+            updated_at: new Date().toISOString(),
           }
         : event
     );
 
     setEvents(updatedEvents);
-    saveEvents(updatedEvents);
+    await saveEvents(updatedEvents);
     eventBus.emit("events_updated");
+
+    // If you're online, call the sync function so the DB is updated:
+    if (navigator.onLine) {
+      await syncLocalEventsWithFirestore(updatedEvents, setEvents, saveEvents);
+    }
+
     setShowPreview(true);
     setSelectedEvent(null);
     setEditableEvent({});
@@ -212,7 +221,7 @@ const SelectedLocalEventModal = ({
     }));
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedEvent) return;
 
     const updatedEvents = events.filter(
@@ -224,6 +233,7 @@ const SelectedLocalEventModal = ({
     eventBus.emit("events_updated");
     setShowPreview(ready);
     setSelectedEvent(null);
+    await deleteDoc(doc(db, "Local Events", selectedEvent.id));
   };
 
   const showNotification = (message, duration = 2500) => {

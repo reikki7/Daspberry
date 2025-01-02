@@ -255,7 +255,7 @@ function ProjectCard({
         <input
           className="bg-transparent border-b border-cyan-400
                      focus:outline-none focus:border-cyan-500
-                     text-cyan-200 text-xl font-semibold mb-3 w-full
+                      text-xl font-semibold mb-3 w-full
                      transition-colors"
           value={tempName}
           autoFocus
@@ -270,7 +270,7 @@ function ProjectCard({
         />
       ) : (
         <h2
-          className="text-xl font-semibold mb-3 text-cyan-200 cursor-pointer"
+          className="text-xl font-semibold mb-3 bg-gradient-to-r from-cyan-200 via-white to-white bg-clip-text text-transparent cursor-pointer"
           onDoubleClick={() => setEditing(true)}
           title="Double-click to rename project"
         >

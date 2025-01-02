@@ -1,4 +1,4 @@
-import React from "react";
+import { useMemo } from "react";
 import CreatableSelect from "react-select/creatable";
 import { buildProjectOptions } from "../../utils/buildProjectOptions";
 import { PlusCircle, ClipboardPen, CalendarIcon } from "lucide-react";
@@ -16,72 +16,95 @@ const NewLocalTaskModal = ({
   setNewTaskModalOpen,
   setProjects,
 }) => {
-  // 1) Convert projects array to react-select options
+  // Convert projects array to react-select options
   const projectOptions = buildProjectOptions(projects);
 
-  // 2) Find the option matching newTask.project
+  // Find the option matching newTask.project
   const selectedOption =
     projectOptions.find((opt) => opt.value === newTask.project) || null;
 
-  // 3) Custom styles for react-select
-  const customStyles = {
-    control: (provided, state) => ({
-      ...provided,
-      backgroundColor: "rgba(255,255,255,0.05)",
-      borderColor: state.isFocused
-        ? "rgba(34,211,238,0.7)" // More vibrant cyan on focus
-        : "rgba(255,255,255,0.2)",
-      borderRadius: "0.5rem",
-      padding: "0 0.25rem",
-      boxShadow: state.isFocused
-        ? "0 0 0 3px rgba(34,211,238,0.3)" // Slight glow on focus
-        : "none",
-      "&:hover": {
-        borderColor: "rgba(34,211,238,0.7)",
-      },
+  // Custom styles for react-select
+  const customStyles = useMemo(
+    () => ({
+      control: (provided, state) => ({
+        ...provided,
+        backgroundColor: "rgba(255,255,255,0.05)",
+        borderColor: state.isFocused
+          ? "rgba(34,211,238,0.7)"
+          : "rgba(255,255,255,0.2)",
+        borderRadius: "0.5rem",
+        padding: "0 0.25rem",
+        boxShadow: state.isFocused ? "0 0 0 3px rgba(34,211,238,0.3)" : "none",
+        "&:hover": {
+          borderColor: "rgba(34,211,238,0.7)",
+        },
+        minHeight: "40px", // Add fixed height
+        transition: "all 0.2s ease", // Add transition
+      }),
+      menu: (provided) => ({
+        ...provided,
+        backgroundColor: "#1f2937",
+        border: "1px solid rgba(255,255,255,0.2)",
+        borderRadius: "0.5rem",
+        marginTop: "0.25rem",
+        zIndex: 9999, // Ensure menu is always on top
+      }),
+      option: (provided, state) => ({
+        ...provided,
+        backgroundColor: state.isFocused ? "#008eae" : "transparent",
+        color: "#fff",
+        cursor: "pointer",
+        "&:active": {
+          backgroundColor: "#0284c7",
+        },
+      }),
+      singleValue: (provided) => ({
+        ...provided,
+        color: "#fff",
+      }),
+      placeholder: (provided) => ({
+        ...provided,
+        color: "rgba(255,255,255,0.6)",
+      }),
+      input: (provided) => ({
+        ...provided,
+        color: "#fff",
+      }),
+      menuPortal: (base) => ({
+        ...base,
+        zIndex: 9999,
+      }),
+      container: (provided) => ({
+        ...provided,
+        minWidth: "210px",
+      }),
     }),
-    menu: (provided) => ({
-      ...provided,
-      backgroundColor: "#1f2937", // Tailwind bg-gray-800
-      border: "1px solid rgba(255,255,255,0.2)",
-      borderRadius: "0.5rem",
-      marginTop: "0.25rem",
-    }),
-    option: (provided, state) => ({
-      ...provided,
-      // Brighter hover color
-      backgroundColor: state.isFocused ? "#008eae" : "transparent",
-      color: "#fff",
-      cursor: "pointer",
-      "&:active": {
-        // Slightly darker active color
-        backgroundColor: "#0284c7",
-      },
-    }),
-    singleValue: (provided) => ({
-      ...provided,
-      color: "#fff",
-    }),
-    placeholder: (provided) => ({
-      ...provided,
-      color: "rgba(255,255,255,0.6)",
-    }),
-    input: (provided) => ({
-      ...provided,
-      color: "#fff",
-    }),
-  };
+    []
+  );
 
-  // 4) Custom theme for react-select
-  const customTheme = (theme) => ({
-    ...theme,
-    borderRadius: 8,
-    colors: {
-      ...theme.colors,
-      primary25: "#0ea5e9", // highlight color on hover
-      primary: "#06B6D4", // brand color for selection
-    },
-  });
+  const customTheme = useMemo(
+    () => (theme) => ({
+      ...theme,
+      borderRadius: 8,
+      colors: {
+        ...theme.colors,
+        primary25: "#0ea5e9",
+        primary: "#06B6D4",
+        neutral0: "#1f2937",
+        neutral5: "#374151",
+        neutral10: "#4B5563",
+        neutral20: "rgba(255,255,255,0.2)",
+        neutral30: "rgba(255,255,255,0.3)",
+        neutral40: "rgba(255,255,255,0.4)",
+        neutral50: "rgba(255,255,255,0.5)",
+        neutral60: "rgba(255,255,255,0.6)",
+        neutral70: "rgba(255,255,255,0.7)",
+        neutral80: "rgba(255,255,255,0.8)",
+        neutral90: "rgba(255,255,255,0.9)",
+      },
+    }),
+    []
+  );
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -94,7 +117,7 @@ const NewLocalTaskModal = ({
       className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-md bg-black/60 flex items-center justify-center z-50 px-4 py-8"
       onClick={handleOverlayClick}
     >
-      {/* Notification (if any) */}
+      {/* Notification */}
       {notification && (
         <div
           className={`fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg text-white backdrop-blur-sm 
@@ -154,7 +177,7 @@ const NewLocalTaskModal = ({
 
         {/* Body */}
         <div className="p-6 overflow-y-auto h-[800px] scrollbar-hide">
-          {/* --- Date & Project (like SelectedLocalTaskModal) --- */}
+          {/* Date & Project */}
           <div className="relative flex items-center justify-between text-sm mb-4 group">
             <div className="flex gap-3">
               {/* Date Picker */}
@@ -196,15 +219,10 @@ const NewLocalTaskModal = ({
                       project: option ? option.value : "",
                     });
                   }}
-                  // onCreateOption is called when user presses Enter on new text
                   onCreateOption={(inputValue) => {
-                    // Optionally add to global projects if you want it in the dropdown
-                    // immediately for future usage:
                     if (inputValue && !projects.includes(inputValue)) {
-                      // If you passed setProjects from parent:
                       setProjects((prev) => [...prev, inputValue]);
                     }
-                    // Also set as the newTask.project
                     setNewTask((prev) => ({
                       ...prev,
                       project: inputValue,

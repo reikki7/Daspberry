@@ -5,12 +5,58 @@ const LocalMapEventCards = ({
   paginatedEvents,
   setSelectedEvent,
   imageCache,
-  containerHeight,
 }) => {
+  const calculateTimeRemainingLabel = (event) => {
+    const now = new Date();
+    const startDateTime = new Date(
+      `${event.date_start}T${event.time_start || "00:00"}`
+    );
+
+    // Adjust time difference by setting the time to midnight for accurate day calculation
+    const startDateMidnight = new Date(
+      startDateTime.getFullYear(),
+      startDateTime.getMonth(),
+      startDateTime.getDate()
+    );
+    const nowMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    const difference = startDateMidnight - nowMidnight;
+
+    if (difference <= 0) return "";
+
+    const days = Math.ceil(difference / (1000 * 60 * 60 * 24));
+    const months = Math.floor(days / 30);
+    const weeks = Math.floor(days / 7);
+    const remainingDays = days % 7;
+
+    if (months > 0) {
+      return `in ${months} month${months > 1 ? "s" : ""}`;
+    } else if (weeks > 0) {
+      return `in ${weeks}w ${remainingDays}d`;
+    } else {
+      return `in ${days} day${days > 1 ? "s" : ""}`;
+    }
+  };
   return (
     <div className="w-full h-[331px] mx-auto space-y-6 overflow-y-scroll ">
       {paginatedEvents.events.map((event) => {
         const eventDate = new Date(event.date_start);
+        const now = new Date();
+
+        const isOngoing = (event) => {
+          const startDateTime = new Date(
+            `${event.date_start}T${event.time_start || "00:00"}`
+          );
+          const endDateTime = new Date(
+            `${event.date_end || event.date_start}T${event.time_end || "23:59"}`
+          );
+
+          return startDateTime <= now && endDateTime >= now;
+        };
 
         return (
           <button
@@ -53,6 +99,13 @@ const LocalMapEventCards = ({
                 </>
               )}
 
+              {/* Time Remaining Label */}
+              {!isOngoing(event) && (
+                <div className="absolute top-2 right-2 bg-gray-950/30 text-cyan-50 px-3 rounded-full py-1 text-xs">
+                  {calculateTimeRemainingLabel(event)}
+                </div>
+              )}
+
               {/* Event Details */}
               <div className="flex-grow">
                 <h3 className="font-bold text-left text-2xl text-white truncate">
@@ -64,31 +117,66 @@ const LocalMapEventCards = ({
                     <span>{event.location}</span>
                   </div>
                 )}
-                {event.time_start && (
-                  <div className="text-sm text-left text-gray-300 flex items-center gap-3 mt-1.5">
-                    <Clock7 size={14} className="-mt-0.5" />
+                <div className="text-sm text-left text-gray-300 flex items-center gap-3 mt-1">
+                  {event.time_start && (
+                    <div className="text-sm text-left text-gray-300 flex items-center gap-3">
+                      <Clock7 size={14} className="-mt-0.5" />
 
-                    <div className="text-sm text-left">
-                      {new Date(
-                        `2000-01-01T${event.time_start}`
-                      ).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                      {event.time_end && (
-                        <>
-                          {" - "}
-                          {new Date(
-                            `2000-01-01T${event.time_end}`
-                          ).toLocaleTimeString("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </>
-                      )}
+                      <div className="text-sm text-left">
+                        {new Date(
+                          `2000-01-01T${event.time_start}`
+                        ).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        })}
+                        {event.time_end && (
+                          <>
+                            {" - "}
+                            {new Date(
+                              `2000-01-01T${event.time_end}`
+                            ).toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })}
+                          </>
+                        )}
+                      </div>
+                      {/* Ongoing Badge */}
                     </div>
-                  </div>
-                )}
+                  )}
+                  {isOngoing(event) && (
+                    <div className="text-xs bg-gray-950/30 text-white px-2 py-1 rounded-md">
+                      Ongoing until{" "}
+                      <span className="font-bold">
+                        {(() => {
+                          const endDateTime = new Date(
+                            `${event.date_end || event.date_start}T${
+                              event.time_end || "23:59"
+                            }`
+                          );
+                          const now = new Date();
+
+                          // Check if the event ends today
+                          const isToday =
+                            endDateTime.toDateString() === now.toDateString();
+
+                          return isToday
+                            ? endDateTime.toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hourCycle: "h23", // 24-hour format
+                              }) // Format as hh:mm
+                            : endDateTime.toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "long",
+                              }); // Format as dd Month
+                        })()}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </button>

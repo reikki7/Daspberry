@@ -1,5 +1,5 @@
-import React from "react";
-import CreatableSelect from "react-select/creatable"; // ← Use CreatableSelect
+import { useMemo } from "react";
+import CreatableSelect from "react-select/creatable";
 import { buildProjectOptions } from "../../utils/buildProjectOptions";
 
 import {
@@ -27,7 +27,7 @@ const SelectedLocalTaskModal = ({
   handleTaskComplete,
   processTaskDescription,
   projects,
-  setProjects, // <-- Add this prop if you want to update global projects
+  setProjects,
 }) => {
   // Convert projects array to react-select options
   const projectOptions = buildProjectOptions(projects);
@@ -38,60 +38,87 @@ const SelectedLocalTaskModal = ({
     null;
 
   // Custom styles for react-select
-  const customStyles = {
-    control: (provided, state) => ({
-      ...provided,
-      backgroundColor: "rgba(255,255,255,0.05)",
-      borderColor: state.isFocused
-        ? "rgba(34,211,238,0.7)"
-        : "rgba(255,255,255,0.2)",
-      borderRadius: "0.5rem",
-      padding: "0 0.25rem",
-      boxShadow: state.isFocused ? "0 0 0 3px rgba(34,211,238,0.3)" : "none",
-      "&:hover": {
-        borderColor: "rgba(34,211,238,0.7)",
-      },
+  const customStyles = useMemo(
+    () => ({
+      control: (provided, state) => ({
+        ...provided,
+        backgroundColor: "rgba(255,255,255,0.05)",
+        borderColor: state.isFocused
+          ? "rgba(34,211,238,0.7)"
+          : "rgba(255,255,255,0.2)",
+        borderRadius: "0.5rem",
+        padding: "0 0.25rem",
+        boxShadow: state.isFocused ? "0 0 0 3px rgba(34,211,238,0.3)" : "none",
+        "&:hover": {
+          borderColor: "rgba(34,211,238,0.7)",
+        },
+        minHeight: "40px", // Add fixed height
+        transition: "all 0.2s ease", // Add transition
+      }),
+      menu: (provided) => ({
+        ...provided,
+        backgroundColor: "#1f2937",
+        border: "1px solid rgba(255,255,255,0.2)",
+        borderRadius: "0.5rem",
+        marginTop: "0.25rem",
+        zIndex: 9999, // Ensure menu is always on top
+      }),
+      option: (provided, state) => ({
+        ...provided,
+        backgroundColor: state.isFocused ? "#008eae" : "transparent",
+        color: "#fff",
+        cursor: "pointer",
+        "&:active": {
+          backgroundColor: "#0284c7",
+        },
+      }),
+      singleValue: (provided) => ({
+        ...provided,
+        color: "#fff",
+      }),
+      placeholder: (provided) => ({
+        ...provided,
+        color: "rgba(255,255,255,0.6)",
+      }),
+      input: (provided) => ({
+        ...provided,
+        color: "#fff",
+      }),
+      menuPortal: (base) => ({
+        ...base,
+        zIndex: 9999,
+      }),
+      container: (provided) => ({
+        ...provided,
+        minWidth: "210px",
+      }),
     }),
-    menu: (provided) => ({
-      ...provided,
-      backgroundColor: "#1f2937",
-      border: "1px solid rgba(255,255,255,0.2)",
-      borderRadius: "0.5rem",
-      marginTop: "0.25rem",
-    }),
-    option: (provided, state) => ({
-      ...provided,
-      backgroundColor: state.isFocused ? "#008eae" : "transparent",
-      color: "#fff",
-      cursor: "pointer",
-      "&:active": {
-        backgroundColor: "#0284c7",
-      },
-    }),
-    singleValue: (provided) => ({
-      ...provided,
-      color: "#fff",
-    }),
-    placeholder: (provided) => ({
-      ...provided,
-      color: "rgba(255,255,255,0.6)",
-    }),
-    input: (provided) => ({
-      ...provided,
-      color: "#fff",
-    }),
-  };
+    []
+  );
 
-  // Custom theme
-  const customTheme = (theme) => ({
-    ...theme,
-    borderRadius: 8,
-    colors: {
-      ...theme.colors,
-      primary25: "#0ea5e9",
-      primary: "#06B6D4",
-    },
-  });
+  const customTheme = useMemo(
+    () => (theme) => ({
+      ...theme,
+      borderRadius: 8,
+      colors: {
+        ...theme.colors,
+        primary25: "#0ea5e9",
+        primary: "#06B6D4",
+        neutral0: "#1f2937",
+        neutral5: "#374151",
+        neutral10: "#4B5563",
+        neutral20: "rgba(255,255,255,0.2)",
+        neutral30: "rgba(255,255,255,0.3)",
+        neutral40: "rgba(255,255,255,0.4)",
+        neutral50: "rgba(255,255,255,0.5)",
+        neutral60: "rgba(255,255,255,0.6)",
+        neutral70: "rgba(255,255,255,0.7)",
+        neutral80: "rgba(255,255,255,0.8)",
+        neutral90: "rgba(255,255,255,0.9)",
+      },
+    }),
+    []
+  );
 
   // Handle creation of a new project
   const handleCreateNewProject = (inputValue) => {
@@ -120,9 +147,9 @@ const SelectedLocalTaskModal = ({
     >
       <div
         className="bg-gray-950/80 rounded-2xl overflow-hidden max-w-4xl w-full flex flex-col border border-white/10 shadow-2xl"
-        onClick={(e) => e.stopPropagation()} // Prevent click inside modal from closing it
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* ---- HEADER ---- */}
+        {/* Header */}
         <div
           data-tauri-drag-region
           className="p-5 text-white relative"
@@ -153,17 +180,14 @@ const SelectedLocalTaskModal = ({
           </div>
         </div>
 
-        {/* ---- ERROR MESSAGE ---- */}
         {errorMessage && (
           <div className="text-red-500 mb-2 text-sm">{errorMessage}</div>
         )}
 
-        {/* ---- CONTENT ---- */}
         <div className="p-6 overflow-y-auto scrollbar-hide">
-          {/* ---- TOP ACTIONS: DATE & PROJECT SELECT ---- */}
           <div className="relative flex items-center justify-between text-sm mb-4 group">
             <div className="flex gap-3">
-              {/* DATE PICKER */}
+              {/* Date Picker */}
               <div
                 className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-white/10 cursor-pointer hover:border-cyan-500/30 transition-all duration-300 bg-white/5"
                 onClick={handleContainerClick}
@@ -190,7 +214,6 @@ const SelectedLocalTaskModal = ({
                 </span>
               </div>
 
-              {/* CREATABLESELECT: PROJECT SELECTION */}
               <div className="min-w-[210px]">
                 <CreatableSelect
                   options={projectOptions}
@@ -206,10 +229,7 @@ const SelectedLocalTaskModal = ({
                   isClearable
                   isSearchable
                   menuPortalTarget={document.body}
-                  styles={{
-                    ...customStyles,
-                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                  }}
+                  styles={customStyles}
                   theme={customTheme}
                   formatCreateLabel={(val) => `Create "${val}"`}
                 />

@@ -11,6 +11,7 @@ const LocalTaskList = memo(
     goToNextPage,
     setCurrentPage,
     totalIncompleteTasks,
+    processTaskDescription,
   }) => {
     return (
       <div className="w-full pb-4">
@@ -29,7 +30,7 @@ const LocalTaskList = memo(
               {tasks.map((task) => (
                 <button
                   key={task.id}
-                  className="relative w-[240px] min-w-[240px] bg-gray-950/45 backdrop-blur-xl p-3 text-left rounded-xl transition-all duration-300 group border border-white/5 hover:border-purple-500/30 shadow-lg hover:shadow-cyan-500/10"
+                  className="relative w-[240px] min-w-[240px] h-[285px]  bg-gray-950/45 backdrop-blur-xl p-3 text-left rounded-xl transition-all duration-300 group border border-white/5 hover:border-purple-500/30 shadow-lg hover:shadow-cyan-500/10 flex flex-col"
                   onClick={() => handleTaskClick(task)}
                 >
                   {/* Decorative Elements */}
@@ -38,7 +39,7 @@ const LocalTaskList = memo(
 
                   {/* Header Section */}
                   <div className="mx-2 mt-1 relative">
-                    <h3 className="text-white font-light tracking-wide text-wrap line-clamp-3 truncate text-lg">
+                    <h3 className="text-white font-light tracking-wide text-lg break-words">
                       {task.title}
                     </h3>
                     <div className="flex mt-3 justify-between items-center">
@@ -63,8 +64,8 @@ const LocalTaskList = memo(
                   </div>
 
                   {/* Task Description */}
-                  <div className="h-full mx-2 overflow-y-auto text-xs text-white/70 text-wrap whitespace-pre-wrap max-h-[170px] scrollbar-hide">
-                    {task.description}
+                  <div className="w-full mx-2 text-xs text-white/70 break-words whitespace-pre-wrap flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide ">
+                    {processTaskDescription(task.description)}
                   </div>
                 </button>
               ))}

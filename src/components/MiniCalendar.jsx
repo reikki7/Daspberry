@@ -280,16 +280,16 @@ const MiniCalendar = () => {
                     {dayEvents.map((item, itemIndex) => {
                       const itemColor =
                         item.summary === "Weekly Huddle"
-                          ? "bg-[#ff02e5] hover:bg-opacity-80 duration-300"
+                          ? "bg-[#b9a8ee] hover:bg-opacity-80 duration-300" // Weekly Huddle
                           : item.type === "task"
-                          ? "bg-[#4179f0] hover:bg-opacity-80 duration-300"
+                          ? "bg-[#4179f0] hover:bg-opacity-80 duration-300" // Regular tasks
                           : item.type === "asana_task"
-                          ? "bg-[#fb4261] hover:bg-opacity-80 duration-300"
+                          ? "bg-[#fb4261] hover:bg-opacity-80 duration-300" // Asana tasks
                           : item.type === "google_event"
-                          ? "bg-[#f8f011] hover:bg-opacity-80 duration-300"
+                          ? "bg-[#f8f011] hover:bg-opacity-80 duration-300" // Google events
                           : item.type === "local_event" && item.end
-                          ? "bg-[#871fff] hover:bg-opacity-80 duration-300"
-                          : "bg-[#b9a8ee] hover:bg-opacity-80 duration-300";
+                          ? "bg-[#871fff] hover:bg-opacity-80 duration-300" // Multi-day events
+                          : "bg-[#ff02e5] hover:bg-opacity-80 duration-300"; // Single-day events
 
                       // Apply conditional border radius
                       const borderRadiusClass =
@@ -501,13 +501,13 @@ const MiniCalendar = () => {
                         : item.type === "asana_task"
                         ? "text-[#fb4261] text-xl -mt-1" // Asana tasks
                         : item.summary === "Weekly Huddle"
-                        ? "text-[#ff02e5] text-2xl -mt-[7px]" // Weekly Huddle
+                        ? "text-[#b9a8ee] text-2xl -mt-[7px]" // Weekly Huddle
                         : item.type === "google_event"
                         ? "text-[#f8f011] text-xl -mt-1" // Google events
                         : item.type === "local_event" && item.end
                         ? "text-[#871fff] text-xl -mt-1" // Multi-day events
                         : item.type === "local_event"
-                        ? "text-[#b9a8ee] text-xl -mt-1" // Single-day events
+                        ? "text-[#ff02e5] text-xl -mt-1" // Single-day events
                         : "text-[#faff08] text-xl -mt-1" // Other events
                     }`}
                   >

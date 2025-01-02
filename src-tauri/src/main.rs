@@ -88,6 +88,7 @@ struct Event {
     location: Option<String>,
     latitude: Option<f64>,
     longitude: Option<f64>,
+    updated_at: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -501,10 +502,7 @@ fn read_asana_user_details_cache() -> Result<String, String> {
   }
 }
 
-// ------------------------- SAVE / LOAD TASKS -------------------------
-// These remain unchanged, since they automatically handle the new
-// "project" field via serde’s JSON serialization and deserialization.
-// --------------------------------------------------------------------
+//  Local Tasks
 #[command]
 fn save_local_tasks(tasks: Vec<Task>) -> Result<(), String> {
     let tasks_json = serde_json::to_string(&tasks)
