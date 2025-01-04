@@ -230,12 +230,12 @@ const GoogleCalendarEvents = () => {
           {!tokens && (
             <button
               onClick={getAuthUrl}
-              className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500/20 via-cyan-500/30 to-green-600/40 text-cyan-100 rounded-lg text-sm font-semibold shadow-md hover:from-blue-500/40 hover:to-green-600/50 hover:shadow-lg transition-all duration-300"
+              className="flex items-center hover:opacity-80 group rounded-lg text-sm px-6 py-3 bg-white text-black hover:shadow-lg transition-all duration-300"
             >
               <img
                 src={GoogleLogo}
                 alt="Google logo"
-                className="w-5 h-5 mr-3"
+                className="w-5 h-5 mr-3 group-hover:-rotate-[35deg] duration-300"
               />
               Login with Google
             </button>

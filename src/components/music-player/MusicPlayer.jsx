@@ -39,6 +39,7 @@ const MusicPlayer = () => {
   const [musicMenu, setMusicMenu] = useState(false);
   const [songMetadata, setSongMetadata] = useState({});
   const [albumArtList, setAlbumArtList] = useState([]);
+  const [sortedMusicFiles, setSortedMusicFiles] = useState([]);
 
   const isShuffleRef = useRef(isShuffle);
   const isLoopingSingleRef = useRef(isLoopingSingle);
@@ -53,17 +54,29 @@ const MusicPlayer = () => {
 
   // Play a random track on initial load
   useEffect(() => {
-    if (musicFiles.length > 0) {
-      const randomIndex = Math.floor(Math.random() * musicFiles.length);
+    if (sortedMusicFiles.length > 0) {
+      const randomIndex = Math.floor(Math.random() * sortedMusicFiles.length);
       setCurrentTrackIndex(randomIndex);
       playMusic(randomIndex, false);
     }
-  }, [musicFiles]);
+  }, [sortedMusicFiles]);
 
   // Load music files on initial load
   useEffect(() => {
     loadMusicFiles();
   }, []);
+
+  // sort music files by name, prioritize the title tag if it exists in the metadata, if not, use the file name
+  useEffect(() => {
+    const sortedFiles = [...musicFiles].sort((a, b) => {
+      const aTitle = songMetadata[a.path]?.title || a.name;
+      const bTitle = songMetadata[b.path]?.title || b.name;
+
+      return aTitle.localeCompare(bTitle);
+    });
+
+    setSortedMusicFiles(sortedFiles);
+  }, [musicFiles, songMetadata]);
 
   useEffect(() => {
     isLoopingSingleRef.current = isLoopingSingle;
@@ -267,8 +280,8 @@ const MusicPlayer = () => {
     (currentIndex) =>
       isShuffle
         ? (currentIndex + 1) % shuffledIndices.length
-        : (currentIndex + 1) % musicFiles.length,
-    [isShuffle, shuffledIndices, musicFiles]
+        : (currentIndex + 1) % sortedMusicFiles.length,
+    [isShuffle, shuffledIndices, sortedMusicFiles]
   );
 
   // Returns the previous track index based on whether shuffle mode is enabled or not
@@ -276,13 +289,13 @@ const MusicPlayer = () => {
     (currentIndex) => {
       return !isShuffle
         ? currentIndex === 0
-          ? musicFiles.length - 1
+          ? sortedMusicFiles.length - 1
           : currentIndex - 1
         : currentIndex === 0
         ? shuffledIndices.length - 1
         : currentIndex - 1;
     },
-    [isShuffle, musicFiles.length, shuffledIndices.length]
+    [isShuffle, sortedMusicFiles.length, shuffledIndices.length]
   );
   // IndexedDB
   const initDB = async () => {
@@ -375,7 +388,6 @@ const MusicPlayer = () => {
         metadataCache.set(filePath, result);
         return result;
       }
-
       return null; // Data is outdated
     } catch (error) {
       console.error("Error reading from IndexedDB:", error);
@@ -384,8 +396,8 @@ const MusicPlayer = () => {
   };
 
   // Fetch and parse song metadata
-  const fetchSongMetadata = async (musicFiles) => {
-    const promises = musicFiles.map(async (file) => {
+  const fetchSongMetadata = async (sortedMusicFiles) => {
+    const promises = sortedMusicFiles.map(async (file) => {
       try {
         if (metadataCache.has(file.path)) {
           return metadataCache.get(file.path);
@@ -428,13 +440,27 @@ const MusicPlayer = () => {
     const songData = await Promise.all(promises);
 
     // Process results for state
-    const metadataList = songData.map((data) => data.metadata).filter(Boolean);
-    const albumArtList = songData.map((data) =>
-      data.albumArtBlob ? URL.createObjectURL(data.albumArtBlob) : artDefault
-    );
 
-    setSongMetadata(metadataList);
-    setAlbumArtList(albumArtList);
+    const albumArtMap = {};
+    sortedMusicFiles.forEach((file, index) => {
+      const albumArtBlob = songData[index]?.albumArtBlob;
+      const albumArtUrl = albumArtBlob
+        ? URL.createObjectURL(albumArtBlob)
+        : artDefault;
+      albumArtMap[file.path] = albumArtUrl;
+    });
+
+    const metadataMap = {};
+    sortedMusicFiles.forEach((file, index) => {
+      const metadata = songData[index]?.metadata;
+      if (metadata) {
+        metadataMap[file.path] = metadata;
+      }
+    });
+
+    console.log(albumArtMap);
+    setSongMetadata(metadataMap);
+    setAlbumArtList(albumArtMap);
   };
 
   useEffect(() => {
@@ -444,7 +470,7 @@ const MusicPlayer = () => {
         if (url !== artDefault) URL.revokeObjectURL(url);
       });
     };
-  }, []);
+  }, []); // Run this only once
 
   const updateProgress = () => {
     if (currentSound && currentSound.playing()) {
@@ -456,7 +482,7 @@ const MusicPlayer = () => {
   // Play music
   const playMusic = async (index, firstPlay = true) => {
     const actualIndex = isShuffle ? shuffledIndices[index] : index;
-    const fileToPlay = musicFiles[actualIndex];
+    const fileToPlay = sortedMusicFiles[actualIndex];
     const url = convertFileSrc(fileToPlay.path);
 
     if (currentSound) {
@@ -573,6 +599,11 @@ const MusicPlayer = () => {
   // Toggle play on track click
   const togglePlay = (index) => {
     const playIndex = isShuffle ? getPlayIndex(index) : index;
+    if (currentTrackIndex === playIndex && isPlaying) {
+      // If the same track is clicked and it's playing, stop it first
+      currentSound.stop();
+      setIsPlaying(false);
+    }
     playMusic(playIndex);
   };
 
@@ -587,13 +618,23 @@ const MusicPlayer = () => {
       const newShuffleState = !prev;
       if (newShuffleState) {
         const shuffled = shuffleArray(
-          Array.from({ length: musicFiles.length }, (_, i) => i)
+          Array.from({ length: sortedMusicFiles.length }, (_, i) => i)
         );
+        const newIndex = shuffled.findIndex((idx) => idx === currentTrackIndex);
         setShuffledIndices(shuffled);
+        setCurrentTrackIndex(newIndex);
+      } else {
+        const newIndex = shuffledIndices[currentTrackIndex];
+        setCurrentTrackIndex(newIndex);
       }
       return newShuffleState;
     });
-  }, [musicFiles.length, shuffleArray]);
+  }, [
+    currentTrackIndex,
+    shuffledIndices,
+    shuffleArray,
+    sortedMusicFiles.length,
+  ]);
 
   // Toggle play/pause
   const togglePlayPause = useCallback(() => {
@@ -670,7 +711,7 @@ const MusicPlayer = () => {
       event.preventDefault();
       const delta = Math.sign(event.deltaY);
       setVolume((prevVolume) => {
-        let newVolume = prevVolume - delta * 0.05;
+        let newVolume = prevVolume - delta * 0.05; // Adjust the step size as needed
         if (newVolume < 0) newVolume = 0;
         if (newVolume > 1) newVolume = 1;
         return newVolume;
@@ -743,7 +784,7 @@ const MusicPlayer = () => {
           {/* Music Menu */}
           {musicMenu && (
             <MusicMenuModal
-              musicFiles={musicFiles}
+              musicFiles={sortedMusicFiles}
               currentTrack={currentTrack}
               togglePlay={togglePlay}
               setMusicMenu={setMusicMenu}
@@ -761,6 +802,7 @@ const MusicPlayer = () => {
               toggleShuffle={toggleShuffle}
               isLoopingSingle={isLoopingSingle}
               isShuffle={isShuffle}
+              sortedIndices={shuffledIndices}
             />
           )}
 
