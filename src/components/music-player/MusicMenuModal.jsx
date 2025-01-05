@@ -161,8 +161,6 @@ const MusicMenuModal = ({
             })
           )
         );
-
-        console.log("active letters", visibleLetters);
       } catch (error) {
         console.debug("Error during scroll handling:", error);
       }
@@ -178,7 +176,7 @@ const MusicMenuModal = ({
       handleScroll();
       return () => container.removeEventListener("scroll", handleScroll);
     }
-  }, []);
+  }, [filteredMusic]);
 
   // Generate available letters from filteredMusic
   const letters = useMemo(() => {
@@ -249,7 +247,7 @@ const MusicMenuModal = ({
       }
 
       if (e.key === "/") {
-        e.preventDefault();
+        if (!isSearchFocused) e.preventDefault();
         document.activeElement.blur();
         setIsSearchFocused(true);
         searchInputRef.current.focus();
@@ -511,13 +509,16 @@ const MusicMenuModal = ({
           </div>
         </div>
 
-        <div className="flex music-list items-center" tabIndex={-1}>
+        <div
+          className="flex music-list justify-between items-center"
+          tabIndex={-1}
+        >
           {/* Music List */}
           <div
             ref={scrollContainerRef}
-            className={`p-2 overflow-y-auto focus:outline-none custom-scrollbar ${
-              currentTrack ? "h-[573px]" : "h-[717px]"
-            } `}
+            className={`p-2 overflow-y-auto focus:outline-none custom-scrollbar
+              ${filteredMusic.length < 12 && "mr-2.5"}
+              ${currentTrack ? "h-[573px]" : "h-[717px]"} `}
             role="listbox"
             tabIndex={-1}
             aria-activedescendant={`song-${focusedIndex}`}
@@ -571,7 +572,7 @@ const MusicMenuModal = ({
                         className="w-20 h-20 object-cover"
                       />
                       {/* Track Info */}
-                      <div className="ml-4 max-w-[230px]">
+                      <div className="ml-4 w-[230px]">
                         <span className="block text-sm font-semibold truncate">
                           {metadata[file.path]?.title ||
                             file?.name.replace(/\.mp3$/i, "") ||
