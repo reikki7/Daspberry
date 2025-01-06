@@ -18,6 +18,8 @@ const SelectedLocalEventModal = ({
   setEvents,
   events = [],
   isLoaded,
+  checkOnlineStatus,
+  isOnline,
 }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -134,6 +136,8 @@ const SelectedLocalEventModal = ({
     }
     if (!selectedEvent) return;
 
+    await checkOnlineStatus();
+
     const updatedEvents = events.map((event) =>
       event.id === selectedEvent.id
         ? {
@@ -144,6 +148,7 @@ const SelectedLocalEventModal = ({
             time_start: editableEvent.time_start || null,
             time_end: editableEvent.time_end || null,
             updated_at: new Date().toISOString(),
+            pending_sync: !isOnline,
           }
         : event
     );
@@ -153,7 +158,7 @@ const SelectedLocalEventModal = ({
     eventBus.emit("events_updated");
 
     // If you're online, call the sync function so the DB is updated:
-    if (navigator.onLine) {
+    if (isOnline) {
       await syncLocalEventsWithFirestore(updatedEvents, setEvents, saveEvents);
     }
 

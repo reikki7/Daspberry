@@ -13,6 +13,8 @@ const NewLocalEventModal = ({
   setEvents,
   events = [],
   isLoaded,
+  checkOnlineStatus,
+  isOnline,
 }) => {
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -25,6 +27,7 @@ const NewLocalEventModal = ({
     latitude: null,
     longitude: null,
     updated_at: "",
+    pending_sync: !isOnline,
   });
 
   const [notification, setNotification] = useState(null);
@@ -181,10 +184,13 @@ const NewLocalEventModal = ({
       return;
     }
 
+    await checkOnlineStatus();
+
     const newEventEntry = {
       id: uuidv4(),
       ...newEvent,
       updated_at: new Date().toISOString(),
+      pending_sync: !isOnline,
     };
     const updatedEvents = [...events, newEventEntry];
     setEvents(updatedEvents);
@@ -201,13 +207,13 @@ const NewLocalEventModal = ({
       longitude: null,
     });
 
-    if (navigator.onLine) {
+    eventBus.emit("events_updated");
+    setNewEventModalOpen(false);
+
+    if (isOnline) {
       console.log("Syncing with Firestore...");
       await syncLocalEventsWithFirestore(updatedEvents, setEvents, saveEvents);
     }
-
-    eventBus.emit("events_updated");
-    setNewEventModalOpen(false);
   };
 
   const clearTime = (field) => {

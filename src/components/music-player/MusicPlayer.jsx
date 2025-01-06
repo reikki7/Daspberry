@@ -40,6 +40,7 @@ const MusicPlayer = () => {
   const [songMetadata, setSongMetadata] = useState({});
   const [albumArtList, setAlbumArtList] = useState([]);
   const [sortedMusicFiles, setSortedMusicFiles] = useState([]);
+  const [isLoadingMetadataa, setIsLoadingMetadata] = useState(false);
 
   const isShuffleRef = useRef(isShuffle);
   const isLoopingSingleRef = useRef(isLoopingSingle);
@@ -396,18 +397,22 @@ const MusicPlayer = () => {
   };
 
   // Fetch and parse song metadata
-  const fetchSongMetadata = async (sortedMusicFiles) => {
+  const fetchSongMetadata = async (sortedMusicFiles, refreshData = false) => {
     const promises = sortedMusicFiles.map(async (file) => {
       try {
         if (metadataCache.has(file.path)) {
           return metadataCache.get(file.path);
         }
 
-        const cachedData = await getMetadataFromCache(file.path, file.size);
-        if (cachedData) {
-          metadataCache.set(file.path, cachedData);
-          return cachedData;
+        if (!refreshData) {
+          const cachedData = await getMetadataFromCache(file.path, file.size);
+          if (cachedData) {
+            metadataCache.set(file.path, cachedData);
+            return cachedData;
+          }
         }
+
+        setIsLoadingMetadata(true);
 
         const url = convertFileSrc(file.path);
         const response = await fetch(url);
@@ -459,6 +464,7 @@ const MusicPlayer = () => {
     });
 
     console.log(albumArtMap);
+    setIsLoadingMetadata(false);
     setSongMetadata(metadataMap);
     setAlbumArtList(albumArtMap);
   };
@@ -466,7 +472,7 @@ const MusicPlayer = () => {
   useEffect(() => {
     return () => {
       // Clean up all albumArtList URLs only when the component unmounts
-      albumArtList.forEach((url) => {
+      albumArtList?.forEach((url) => {
         if (url !== artDefault) URL.revokeObjectURL(url);
       });
     };
@@ -803,6 +809,8 @@ const MusicPlayer = () => {
               isLoopingSingle={isLoopingSingle}
               isShuffle={isShuffle}
               sortedIndices={shuffledIndices}
+              fetchSongMetadata={fetchSongMetadata}
+              isLoadingMetadata={isLoadingMetadataa}
             />
           )}
 

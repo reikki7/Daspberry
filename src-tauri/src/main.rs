@@ -66,6 +66,8 @@ struct Task {
     project: String,
     completed: bool,
     completed_on: Option<String>,
+    updated_at: Option<String>,
+    pending_sync: bool
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,6 +91,7 @@ struct Event {
     latitude: Option<f64>,
     longitude: Option<f64>,
     updated_at: Option<String>,
+    pending_sync: bool,
 }
 
 #[derive(Serialize, Deserialize)]

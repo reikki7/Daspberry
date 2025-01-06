@@ -9,6 +9,9 @@ import React, {
 } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { invoke } from "@tauri-apps/api/tauri";
+import { syncLocalTasksWithFirestore } from "../../utils/syncLocalTasks";
+import { db } from "../../config/firebase";
+import { doc, deleteDoc, setDoc } from "firebase/firestore";
 import { FaCopy } from "react-icons/fa";
 import { PlusCircle, BookCheck, ClipboardPenLine } from "lucide-react";
 
@@ -40,14 +43,18 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [copied, setCopied] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const initialTaskRef = useRef(null);
 
-  // Include `project` as empty string by default
+  // Include project as empty string by default
   const [newTask, setNewTask] = useState({
     title: "",
     date: "",
     description: "",
     project: "",
     completed: false,
+    updated_at: new Date().toISOString(),
+    pending_sync: !isOnline,
   });
 
   const dateInputRef = useRef(null);
@@ -75,6 +82,32 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   useEffect(() => {
     loadTasks();
   }, []);
+
+  // 3) Sync whenever user goes back online
+  useEffect(() => {
+    const syncPendingTasks = async () => {
+      if (isOnline) {
+        const tasksToSync = tasks.filter((task) => task.pending_sync);
+        if (tasksToSync.length > 0) {
+          await syncLocalTasksWithFirestore(tasksToSync, setTasks, saveTasks);
+
+          // Mark synced tasks as not pending
+          const updatedTasks = tasks.map((task) =>
+            task.pending_sync ? { ...task, pending_sync: false } : task
+          );
+          setTasks(updatedTasks);
+          await saveTasks(updatedTasks);
+        }
+      }
+    };
+
+    // Debounce sync logic to avoid frequent calls
+    const debounceSync = setTimeout(() => {
+      syncPendingTasks();
+    }, 1000);
+
+    return () => clearTimeout(debounceSync);
+  }, [isOnline, tasks]);
 
   useEffect(() => {
     if (tasks.length > 0) {
@@ -109,6 +142,9 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       showNotification("Task title cannot be empty.", "error");
       return;
     }
+
+    await checkOnlineStatus();
+
     setNewTaskModalOpen(false);
 
     // If user typed a project that isn’t in the list, add it.
@@ -124,10 +160,17 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       project: newTask.project || "",
       completed: false,
       completed_on: null,
+      updated_at: new Date().toISOString(),
+      pending_sync: !isOnline,
     };
 
     const updatedTasks = [...tasks, newTaskEntry];
     setTasks(updatedTasks);
+    await saveTasks(updatedTasks);
+
+    if (isOnline) {
+      await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
+    }
 
     try {
       await invoke("save_local_tasks", { tasks: updatedTasks });
@@ -241,11 +284,22 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       .filter(Boolean);
   };
 
+  const checkOnlineStatus = async () => {
+    try {
+      await fetch("https://firebase.google.com", { mode: "no-cors" });
+      setIsOnline(true);
+    } catch (error) {
+      setIsOnline(false);
+    }
+  };
+
   const handleUpdateTask = async () => {
     if (!selectedTask.title.trim()) {
       showNotification("Task title cannot be empty.", "error");
       return;
     }
+
+    await checkOnlineStatus();
 
     if (selectedTask.project && !projects.includes(selectedTask.project)) {
       setProjects((prev) => [...prev, selectedTask.project]);
@@ -260,24 +314,38 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     setErrorMessage("");
 
     try {
+      // Update task with timestamp
+      const updatedTask = {
+        ...selectedTask,
+        updated_at: new Date().toISOString(),
+        pending_sync: !isOnline,
+      };
+
+      // Update local state
+      const updatedTasks = tasks.map((task) =>
+        task.id === updatedTask.id ? updatedTask : task
+      );
+
       await saveTasks(updatedTasks);
+
+      if (isOnline) {
+        await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
+      }
     } catch (error) {
       console.error("Error saving updated task:", error);
     }
   };
 
-  const handleDeleteTask = async (id) => {
-    const updatedTasks = tasks.filter((task) => task.id !== id);
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return;
+
+    const updatedTasks = tasks.filter((task) => task.id !== selectedTask.id);
+
     setTasks(updatedTasks);
-    try {
-      await saveTasks(updatedTasks);
-      eventBus.emit("events_updated");
-      showNotification("Task deleted successfully!", "success");
-    } catch (error) {
-      console.error("Error saving after deletion:", error);
-    }
+    saveTasks(updatedTasks);
     eventBus.emit("events_updated");
     setSelectedTask(null);
+    await deleteDoc(doc(db, "Local Tasks", selectedTask.id));
   };
 
   const clearAllFields = () => {
@@ -288,10 +356,18 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     setEditMode(false);
   };
 
-  const closeNewTaskModal = () => {
+  const closeSelectedTaskModal = () => {
+    if (selectedTask) {
+      const initialTask = JSON.parse(initialTaskRef.current || "{}");
+
+      if (JSON.stringify(selectedTask) === JSON.stringify(initialTask)) {
+        setSelectedTask(null);
+        setIsModalOpen(false);
+        return;
+      }
+    }
     handleUpdateTask();
     setSelectedTask(null);
-    setNewTaskModalOpen(false);
     setErrorMessage("");
     setEditMode(false);
     setCopied(false);
@@ -299,56 +375,103 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     eventBus.emit("events_updated");
   };
 
-  const handleTaskClick = (task) => {
-    setSelectedTask(task);
-    setTaskIsComplete(task.completed);
-    setIsModalOpen(true);
-  };
+  const handleTaskClick = useCallback(
+    (task) => {
+      setSelectedTask(task);
+      initialTaskRef.current = JSON.stringify(task);
+      setTaskIsComplete(task.completed);
+      setIsModalOpen(true);
+    },
+    [setSelectedTask, setTaskIsComplete, setIsModalOpen]
+  );
 
-  const handleTaskComplete = (taskId, isComplete) => {
+  const handleTaskComplete = async (taskId, isComplete) => {
+    console.log("Task Complete Status:", taskIsComplete);
     const completed_on = isComplete ? new Date().toISOString() : null;
+    const updated_at = new Date().toISOString();
+
     const updatedTasks = tasks.map((task) =>
       task.id === taskId
-        ? { ...task, completed: isComplete, completed_on: completed_on }
+        ? { ...task, completed: isComplete, completed_on, updated_at }
         : task
     );
 
     setTasks(updatedTasks);
-    saveTasks(updatedTasks);
 
-    if (selectedTask && selectedTask.id === taskId) {
-      setSelectedTask({
-        ...selectedTask,
-        completed: isComplete,
-        completed_on: completed_on,
-      });
+    // Save tasks locally
+    await saveTasks(updatedTasks);
+
+    // Sync the specific task with Firestore
+    const updatedTask = updatedTasks.find((task) => task.id === taskId);
+
+    if (updatedTask) {
       setTaskIsComplete(isComplete);
-      deleteOldestCompletedTasks(tasks);
     }
-    eventBus.emit("events_updated");
+
+    // Remove oldest completed tasks if necessary
+    deleteOldestCompletedTasks(updatedTasks);
+
+    // Save tasks locally
+    await saveTasks(updatedTasks);
+
+    // Sync the specific task with Firestore
+    if (updatedTask && isOnline) {
+      try {
+        const docRef = doc(db, "Local Tasks", updatedTask.id);
+        await setDoc(docRef, updatedTask, { merge: true }); // Update Firestore
+        console.log(`Task ${updatedTask.id} updated in Firestore.`);
+      } catch (error) {
+        console.error("Error updating task in Firestore:", error);
+      }
+    }
   };
 
-  const deleteTaskById = (taskId) => {
+  const distinctIncompleteProjects = useMemo(() => {
+    const incompleteProjects = tasks
+      .filter((t) => !t.completed)
+      .map((t) => t.project);
+
+    return [...new Set(incompleteProjects)].filter(Boolean);
+  }, [tasks]);
+
+  const deleteTaskById = async (taskId) => {
     const updatedTasks = tasks.filter((task) => task.id !== taskId);
     setTasks(updatedTasks);
     saveTasks(updatedTasks);
+    await deleteDoc(doc(db, "Local Tasks", taskId));
     eventBus.emit("events_updated");
   };
 
   const deleteOldestCompletedTasks = (tasks) => {
     const completedTasks = tasks.filter((task) => task.completed_on);
-    if (completedTasks.length > 20) {
-      const sortedCompletedTasks = completedTasks.sort(
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    const oldCompletedTasks = completedTasks.filter(
+      (task) => new Date(task.completed_on) < threeMonthsAgo
+    );
+
+    const remainingCompletedTasks = completedTasks.filter(
+      (task) => new Date(task.completed_on) >= threeMonthsAgo
+    );
+
+    if (remainingCompletedTasks.length > 50) {
+      const sortedCompletedTasks = remainingCompletedTasks.sort(
         (a, b) => new Date(a.completed_on) - new Date(b.completed_on)
       );
       const tasksToDelete = sortedCompletedTasks.slice(
         0,
-        completedTasks.length - 20
+        remainingCompletedTasks.length - 50
       );
       tasksToDelete.forEach((task) => {
         deleteTaskById(task.id);
       });
     }
+
+    oldCompletedTasks.forEach((task) => {
+      deleteTaskById(task.id);
+    });
+
     eventBus.emit("events_updated");
   };
 
@@ -360,8 +483,8 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   );
 
   const currentTasks = useMemo(() => {
-    return tasks
-      .filter((task) => !task.completed)
+    const tasksWithDueDate = tasks
+      .filter((task) => task.date && !task.completed)
       .sort((a, b) => {
         const dateA = new Date(a.date).getTime() || Infinity;
         const dateB = new Date(b.date).getTime() || Infinity;
@@ -374,8 +497,16 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
         if (!isOverdueA && isOverdueB) return 1;
 
         return dateA - dateB;
-      })
-      .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+      });
+
+    const tasksWithoutDueDate = tasks
+      .filter((task) => !task.date && !task.completed)
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    return [...tasksWithDueDate, ...tasksWithoutDueDate].slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
   }, [tasks, currentPage]);
 
   const goToPreviousPage = () => {
@@ -454,11 +585,14 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       {/* Task Modal */}
       {selectedTask && (
         <SelectedLocalTaskModal
+          tasks={tasks}
+          setTasks={setTasks}
+          saveTasks={saveTasks}
           selectedTask={selectedTask}
           setSelectedTask={setSelectedTask}
           handleTitleChange={handleTitleChange}
           handleUpdateTask={handleUpdateTask}
-          closeNewTaskModal={closeNewTaskModal}
+          closeSelectedTaskModal={closeSelectedTaskModal}
           errorMessage={errorMessage}
           editMode={editMode}
           setEditMode={setEditMode}
@@ -468,8 +602,9 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
           taskIsComplete={taskIsComplete}
           handleTaskComplete={handleTaskComplete}
           processTaskDescription={processTaskDescription}
-          projects={projects}
+          projects={distinctIncompleteProjects}
           setProjects={setProjects}
+          isOnline={isOnline}
         />
       )}
 

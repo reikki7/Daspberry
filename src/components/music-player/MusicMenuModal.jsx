@@ -1,16 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 import artDefault from "../../assets/art-default.jpg";
-import {
-  faCompactDisc,
-  faPlay,
-  faPause,
-  faForward,
-  faBackward,
-  faShuffle,
-  faRepeat,
-} from "@fortawesome/free-solid-svg-icons";
-import { ArrowUpZA, ArrowDownAZ } from "lucide-react";
+import { faCompactDisc } from "@fortawesome/free-solid-svg-icons";
+import { ArrowUpZA, ArrowDownAZ, RefreshCw } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import MusicMenuPlayerControls from "./MusicMenuPlayerControls";
 
@@ -33,6 +25,8 @@ const MusicMenuModal = ({
   toggleRepeatSingle,
   isShuffle,
   isLoopingSingle,
+  fetchSongMetadata,
+  isLoadingMetadata,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -504,6 +498,24 @@ const MusicMenuModal = ({
                 title="Toggle Sort Order"
               >
                 {sortOrder === "asc" ? <ArrowDownAZ /> : <ArrowUpZA />}
+              </button>
+              <button
+                onClick={async () => {
+                  // Call your `fetchSongMetadata` function to refetch metadata
+                  await fetchSongMetadata(musicFiles, true);
+                  alert("Metadata and cache updated successfully!");
+                }}
+                className="text-white/60 group px-2 hover:text-white duration-200"
+                title="Refresh Metadata"
+              >
+                <RefreshCw
+                  size={18}
+                  className={` duration-300 ${
+                    isLoadingMetadata
+                      ? "animate-spin"
+                      : "group-hover:rotate-180"
+                  }`}
+                />
               </button>
             </div>
           </div>

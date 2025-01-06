@@ -12,7 +12,7 @@ const NewLocalTaskModal = ({
   handleAddTask,
   notification,
   setNotification,
-  projects, // receive existing projects
+  projects,
   setNewTaskModalOpen,
   setProjects,
 }) => {
@@ -24,63 +24,83 @@ const NewLocalTaskModal = ({
     projectOptions.find((opt) => opt.value === newTask.project) || null;
 
   // Custom styles for react-select
-  const customStyles = useMemo(
-    () => ({
-      control: (provided, state) => ({
-        ...provided,
-        backgroundColor: "rgba(255,255,255,0.05)",
-        borderColor: state.isFocused
-          ? "rgba(34,211,238,0.7)"
-          : "rgba(255,255,255,0.2)",
-        borderRadius: "0.5rem",
-        padding: "0 0.25rem",
-        boxShadow: state.isFocused ? "0 0 0 3px rgba(34,211,238,0.3)" : "none",
-        "&:hover": {
-          borderColor: "rgba(34,211,238,0.7)",
-        },
-        minHeight: "40px", // Add fixed height
-        transition: "all 0.2s ease", // Add transition
-      }),
-      menu: (provided) => ({
-        ...provided,
-        backgroundColor: "#1f2937",
-        border: "1px solid rgba(255,255,255,0.2)",
-        borderRadius: "0.5rem",
-        marginTop: "0.25rem",
-        zIndex: 9999, // Ensure menu is always on top
-      }),
-      option: (provided, state) => ({
-        ...provided,
-        backgroundColor: state.isFocused ? "#008eae" : "transparent",
-        color: "#fff",
-        cursor: "pointer",
-        "&:active": {
-          backgroundColor: "#0284c7",
-        },
-      }),
-      singleValue: (provided) => ({
-        ...provided,
-        color: "#fff",
-      }),
-      placeholder: (provided) => ({
-        ...provided,
-        color: "rgba(255,255,255,0.6)",
-      }),
-      input: (provided) => ({
-        ...provided,
-        color: "#fff",
-      }),
-      menuPortal: (base) => ({
-        ...base,
-        zIndex: 9999,
-      }),
-      container: (provided) => ({
-        ...provided,
-        minWidth: "210px",
-      }),
+  const customStyles = {
+    control: (provided, state) => ({
+      ...provided,
+      backgroundColor: "rgba(255,255,255,0.05)",
+      borderRadius: "0.5rem",
+      padding: "0.25rem",
+      boxShadow: state.isFocused ? "0 0 0 3px rgba(34,211,238,0.3)" : "none",
+      "&:hover": {
+        borderColor: "rgba(34,211,238,0.7)",
+      },
+      minHeight: "40px",
+      cursor: "pointer",
+      transition: "all 0.2s ease", // Add transition
     }),
-    []
-  );
+    menu: (provided) => ({
+      ...provided,
+      backgroundColor: "rgb(17, 24, 39)", // Match control background
+      border: "1px solid rgba(255,255,255,0.2)",
+      borderRadius: "0.5rem",
+      marginTop: "0.25rem",
+      zIndex: 9999,
+      overflow: "hidden",
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      backgroundColor: state.isFocused ? "#008eae" : "transparent",
+      color: "white",
+      cursor: "pointer",
+      padding: "0.5rem 1rem",
+      "&:active": {
+        backgroundColor: "#0284c7",
+      },
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: "white",
+    }),
+    placeholder: (provided) => ({
+      ...provided,
+      color: "rgba(255,255,255,0.6)",
+    }),
+    input: (provided) => ({
+      ...provided,
+      color: "white",
+    }),
+    valueContainer: (provided) => ({
+      ...provided,
+      padding: "2px 8px",
+    }),
+    menuPortal: (base) => ({
+      ...base,
+      zIndex: 9999,
+    }),
+    container: (provided) => ({
+      ...provided,
+      minWidth: "210px",
+    }),
+    dropdownIndicator: (provided) => ({
+      ...provided,
+      color: "rgba(255,255,255,0.6)",
+      padding: "0 8px",
+      "&:hover": {
+        color: "#06b6d4",
+      },
+    }),
+    clearIndicator: (provided) => ({
+      ...provided,
+      color: "rgba(255,255,255,0.6)",
+      padding: "0 4px",
+      "&:hover": {
+        color: "#06b6d4",
+      },
+    }),
+    indicatorSeparator: () => ({
+      display: "none",
+    }),
+  };
 
   const customTheme = useMemo(
     () => (theme) => ({
@@ -168,7 +188,10 @@ const NewLocalTaskModal = ({
             />
             <button
               className="absolute right-0 text-center p-2 rounded-full text-white text-2xl hover:rotate-90 focus:outline-none duration-300"
-              onClick={clearAllFields}
+              onClick={(e) => {
+                e.stopPropagation();
+                clearAllFields();
+              }}
             >
               &times;
             </button>
@@ -220,7 +243,10 @@ const NewLocalTaskModal = ({
                     });
                   }}
                   onCreateOption={(inputValue) => {
-                    if (inputValue && !projects.includes(inputValue)) {
+                    if (
+                      inputValue &&
+                      !projectOptions.some((opt) => opt.value === inputValue)
+                    ) {
                       setProjects((prev) => [...prev, inputValue]);
                     }
                     setNewTask((prev) => ({

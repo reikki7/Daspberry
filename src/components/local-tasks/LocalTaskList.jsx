@@ -16,7 +16,7 @@ const LocalTaskList = memo(
     return (
       <div className="w-full pb-4">
         {tasks.filter((task) => !task.completed).length === 0 && (
-          <div className="text-cyan-400 text-center text-lg my-3 font-light tracking-wider animate-pulse">
+          <div className="text-white text-center text-lg my-3 font-light tracking-wider animate-pulse">
             No TODO found. Click "Add TODO" to create a new task.
           </div>
         )}
@@ -30,7 +30,7 @@ const LocalTaskList = memo(
               {tasks.map((task) => (
                 <button
                   key={task.id}
-                  className="relative w-[240px] min-w-[240px] h-[285px]  bg-gray-950/45 backdrop-blur-xl p-3 text-left rounded-xl transition-all duration-300 group border border-white/5 hover:border-purple-500/30 shadow-lg hover:shadow-cyan-500/10 flex flex-col"
+                  className="relative w-[241.5px] min-w-[241.5px] h-[285px]  bg-gray-950/45 backdrop-blur-xl p-3 text-left rounded-xl transition-all duration-300 group border border-white/5 hover:border-purple-500/30 shadow-lg hover:shadow-cyan-500/10 flex flex-col"
                   onClick={() => handleTaskClick(task)}
                 >
                   {/* Decorative Elements */}

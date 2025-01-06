@@ -9,24 +9,18 @@ import React, {
 } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { syncLocalEventsWithFirestore } from "../../utils/syncLocalEvents";
-import { db } from "../../config/firebase";
-import { useLoadScript } from "@react-google-maps/api";
 import { PlusCircle, CalendarFold } from "lucide-react";
 import { ScaleLoader } from "react-spinners";
 import FallbackImage from "../../assets/fallback-image-events.jpg";
 import eventBus from "../../utils/eventBus";
-import EventMap from "./EventMap";
 
-const LocalEventCards = lazy(() => import("./LocalEventCards"));
 const LocalMapEventCards = lazy(() => import("./LocalMapEventCards"));
 const LocalPastEventModal = lazy(() => import("./LocalPastEventModal"));
 const SelectedLocalEventModal = lazy(() => import("./SelectedLocalEventModal"));
 const NewLocalEventModal = lazy(() => import("./NewLocalEventModal"));
 const PaginationControls = lazy(() => import("./PaginationControls"));
 
-const libraries = ["places", "marker"];
-
-const LocalEvents = () => {
+const LocalEvents = ({ isLoaded }) => {
   const [events, setEvents] = useState([]);
   const [newEventModalOpen, setNewEventModalOpen] = useState(false);
   const [imageCache, setImageCache] = useState({});
@@ -34,14 +28,8 @@ const LocalEvents = () => {
   const [editableEvent, setEditableEvent] = useState({});
   const [isEventAvailable, setIsEventAvailable] = useState(false);
   const [pastEventsModalOpen, setPastEventsModalOpen] = useState(false);
-  const [isMapExisting, setIsMapExisting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_API_KEY,
-    libraries,
-    preventGoogleFontsLoading: true,
-  });
+  const [isOnline, setIsOnline] = useState(true);
 
   const handleContainerClick = (ref) => {
     if (ref.current) {
@@ -79,6 +67,15 @@ const LocalEvents = () => {
     }
   };
 
+  const checkOnlineStatus = async () => {
+    try {
+      await fetch("https://firebase.google.com", { mode: "no-cors" });
+      setIsOnline(true);
+    } catch (error) {
+      setIsOnline(false);
+    }
+  };
+
   useEffect(() => {
     loadEvents();
     import("./LocalPastEventModal");
@@ -86,19 +83,34 @@ const LocalEvents = () => {
     import("./NewLocalEventModal");
   }, []);
 
-  // 3) Sync whenever user goes back online
+  // Sync whenever user goes back online
   useEffect(() => {
-    async function handleOnline() {
-      await syncLocalEventsWithFirestore(events, setEvents, saveEvents);
-    }
+    const syncPendingEvents = async () => {
+      if (isOnline) {
+        const eventsToSync = events.filter((event) => event.pending_sync);
+        if (eventsToSync.length > 0) {
+          await syncLocalEventsWithFirestore(
+            eventsToSync,
+            setEvents,
+            saveEvents
+          );
 
-    if (navigator.onLine) {
-      handleOnline();
-    }
+          // Mark synced events as not pending
+          const updatedEvents = events.map((event) =>
+            event.pending_sync ? (event.pending_sync = false) : event
+          );
+          setEvents(updatedEvents);
+          await saveEvents(updatedEvents);
+        }
+      }
+    };
 
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, []);
+    const debouncedSync = setTimeout(() => {
+      syncPendingEvents();
+    }, 1000);
+
+    return () => clearTimeout(debouncedSync);
+  }, [isOnline, events]);
 
   // Check if there are any upcoming events
   useEffect(() => {
@@ -272,11 +284,6 @@ const LocalEvents = () => {
 
   return (
     <div>
-      <EventMap
-        setIsMapExisting={setIsMapExisting}
-        isLoaded={isLoaded}
-        loadError={loadError}
-      />
       <div>
         <div className="flex justify-between mb-3">
           <h1 className="text-xl flex gap-4 items-center">
@@ -326,24 +333,13 @@ const LocalEvents = () => {
           }
         >
           {/* Events Cards */}
-          {isMapExisting ? (
-            <LocalMapEventCards
-              paginatedEvents={paginatedEvents}
-              setSelectedEvent={setSelectedEvent}
-              imageCache={imageCache}
-              getTitleSize={getTitleSize}
-              getTimeRemainingLabel={getTimeRemainingLabel}
-            />
-          ) : (
-            <LocalEventCards
-              paginatedEvents={paginatedEvents}
-              setSelectedEvent={setSelectedEvent}
-              imageCache={imageCache}
-              containerHeight={containerHeight}
-              getTitleSize={getTitleSize}
-              getTimeRemainingLabel={getTimeRemainingLabel}
-            />
-          )}
+          <LocalMapEventCards
+            paginatedEvents={paginatedEvents}
+            setSelectedEvent={setSelectedEvent}
+            imageCache={imageCache}
+            getTitleSize={getTitleSize}
+            getTimeRemainingLabel={getTimeRemainingLabel}
+          />
 
           <PaginationControls
             paginatedEvents={paginatedEvents}
@@ -371,6 +367,8 @@ const LocalEvents = () => {
               setEvents={setEvents}
               events={events}
               isLoaded={isLoaded}
+              checkOnlineStatus={checkOnlineStatus}
+              isOnline={isOnline}
             />
           )}
 
@@ -383,6 +381,8 @@ const LocalEvents = () => {
               setEvents={setEvents}
               events={events}
               isLoaded={isLoaded}
+              checkOnlineStatus={checkOnlineStatus}
+              isOnline={isOnline}
             />
           )}
         </Suspense>

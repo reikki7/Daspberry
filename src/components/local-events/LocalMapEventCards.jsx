@@ -100,7 +100,7 @@ const LocalMapEventCards = ({
               )}
 
               {/* Time Remaining Label */}
-              {!isOngoing(event) && (
+              {!isOngoing(event) && event.date_start && (
                 <div className="absolute top-2 right-2 bg-gray-950/30 text-cyan-50 px-3 rounded-full py-1 text-xs">
                   {calculateTimeRemainingLabel(event)}
                 </div>
