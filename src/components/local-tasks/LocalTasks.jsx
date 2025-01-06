@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import { invoke } from "@tauri-apps/api/tauri";
 import { syncLocalTasksWithFirestore } from "../../utils/syncLocalTasks";
 import { db } from "../../config/firebase";
-import { doc, deleteDoc, setDoc } from "firebase/firestore";
+import { doc, deleteDoc, setDoc, writeBatch } from "firebase/firestore";
 import { FaCopy } from "react-icons/fa";
 import { PlusCircle, BookCheck, ClipboardPenLine } from "lucide-react";
 
@@ -29,6 +29,8 @@ const LocalTaskList = lazy(() => import("./LocalTaskList"));
 import SelectedLocalTaskModal from "./SelectedLocalTaskModal";
 import CompletedLocalTaskModal from "./CompletedLocalTaskModal";
 import NewLocalTaskModal from "./NewLocalTaskModal";
+
+const DELETED_TASKS_COLLECTION = "Deleted Tasks";
 
 const LocalTasks = ({ setIsTaskAvailable }) => {
   const [tasks, setTasks] = useState([]);
@@ -81,6 +83,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
   useEffect(() => {
     loadTasks();
+    syncLocalTasksWithFirestore(tasks, setTasks, saveTasks);
   }, []);
 
   // 3) Sync whenever user goes back online
@@ -339,13 +342,23 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   const handleDeleteTask = async () => {
     if (!selectedTask) return;
 
-    const updatedTasks = tasks.filter((task) => task.id !== selectedTask.id);
+    const batch = writeBatch(db);
 
+    // Delete the task
+    batch.delete(doc(db, "Local Tasks", selectedTask.id));
+
+    // Add deletion record
+    batch.set(doc(db, DELETED_TASKS_COLLECTION, selectedTask.id), {
+      deleted_at: new Date().toISOString(),
+    });
+
+    await batch.commit();
+
+    const updatedTasks = tasks.filter((task) => task.id !== selectedTask.id);
     setTasks(updatedTasks);
     saveTasks(updatedTasks);
-    eventBus.emit("events_updated");
     setSelectedTask(null);
-    await deleteDoc(doc(db, "Local Tasks", selectedTask.id));
+    eventBus.emit("events_updated");
   };
 
   const clearAllFields = () => {

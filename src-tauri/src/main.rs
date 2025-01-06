@@ -67,6 +67,7 @@ struct Task {
     completed: bool,
     completed_on: Option<String>,
     updated_at: Option<String>,
+    #[serde(default)]
     pending_sync: bool
 }
 
@@ -91,6 +92,7 @@ struct Event {
     latitude: Option<f64>,
     longitude: Option<f64>,
     updated_at: Option<String>,
+    #[serde(default)]
     pending_sync: bool,
 }
 

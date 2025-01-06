@@ -78,6 +78,7 @@ const LocalEvents = ({ isLoaded }) => {
 
   useEffect(() => {
     loadEvents();
+    syncLocalEventsWithFirestore(events, setEvents, saveEvents);
     import("./LocalPastEventModal");
     import("./SelectedLocalEventModal");
     import("./NewLocalEventModal");

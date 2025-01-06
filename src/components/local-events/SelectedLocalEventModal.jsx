@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { ExternalLink, Eye } from "lucide-react";
 import eventBus from "../../utils/eventBus";
-import { deleteDoc, doc } from "firebase/firestore";
+import { writeBatch, doc } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import { syncLocalEventsWithFirestore } from "../../utils/syncLocalEvents";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
 } from "use-places-autocomplete";
+
+const DELETED_EVENTS_COLLECTION = "Deleted Events";
 
 const SelectedLocalEventModal = ({
   selectedEvent,
@@ -229,16 +231,25 @@ const SelectedLocalEventModal = ({
   const handleDelete = async () => {
     if (!selectedEvent) return;
 
+    const batch = writeBatch(db);
+
+    // Delete the event
+    batch.delete(doc(db, "Local Events", selectedEvent.id));
+
+    // Add deletion record
+    batch.set(doc(db, DELETED_EVENTS_COLLECTION, selectedEvent.id), {
+      deleted_at: new Date().toISOString(),
+    });
+
+    await batch.commit();
+
     const updatedEvents = events.filter(
       (event) => event.id !== selectedEvent.id
     );
-
     setEvents(updatedEvents);
     saveEvents(updatedEvents);
-    eventBus.emit("events_updated");
-    setShowPreview(ready);
     setSelectedEvent(null);
-    await deleteDoc(doc(db, "Local Events", selectedEvent.id));
+    eventBus.emit("events_updated");
   };
 
   const showNotification = (message, duration = 2500) => {
