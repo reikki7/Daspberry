@@ -7,40 +7,52 @@ const LocalMapEventCards = ({
   imageCache,
 }) => {
   const calculateTimeRemainingLabel = (event) => {
+    // If no date_start, don't calculate remaining hours
+    if (!event.date_start) {
+      const days = event.duration_in_days;
+      return `${days} day${days > 1 ? "s" : ""}`;
+    }
+
     const now = new Date();
     const startDateTime = new Date(
       `${event.date_start}T${event.time_start || "00:00"}`
     );
 
-    // Adjust time difference by setting the time to midnight for accurate day calculation
-    const startDateMidnight = new Date(
-      startDateTime.getFullYear(),
-      startDateTime.getMonth(),
-      startDateTime.getDate()
-    );
-    const nowMidnight = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
+    // Calculate the difference in milliseconds
+    const difference = startDateTime - now;
 
-    const difference = startDateMidnight - nowMidnight;
-
-    if (difference <= 0) return "";
-
-    const days = Math.ceil(difference / (1000 * 60 * 60 * 24));
+    // Calculate the time components
+    const minutes = Math.floor(difference / (1000 * 60));
+    const hours = Math.floor(difference / (1000 * 60 * 60));
+    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
     const months = Math.floor(days / 30);
     const weeks = Math.floor(days / 7);
     const remainingDays = days % 7;
+    const remainingHours = Math.floor(
+      (difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
 
     if (months > 0) {
-      return `in ${months} month${months > 1 ? "s" : ""}`;
+      const daysLabel = remainingDays > 0 ? ` ${remainingDays}d` : "";
+      return remainingDays > 0
+        ? `in ${months}m ${remainingDays}d`
+        : `in ${months} month${months > 1 ? "s" : ""}`;
     } else if (weeks > 0) {
-      return `in ${weeks}w ${remainingDays}d`;
-    } else {
-      return `in ${days} day${days > 1 ? "s" : ""}`;
+      const daysLabel = remainingDays > 0 ? ` ${remainingDays}d` : "";
+      return remainingDays > 0
+        ? `in ${weeks}w ${remainingDays}d`
+        : `in ${weeks} week${weeks > 1 ? "s" : ""}`;
+    } else if (days > 0) {
+      const hoursLabel = remainingHours > 0 ? ` ${remainingHours}h` : "";
+      return remainingHours > 0
+        ? `in ${days}d ${remainingHours}h`
+        : `in ${days} day${days > 1 ? "s" : ""}`;
+    } else if (hours > 0) {
+      return `in ${hours} hour${hours > 1 ? "s" : ""}`;
     }
+    return `in ${minutes} minute${minutes > 1 ? "s" : ""}`;
   };
+
   return (
     <div className="w-full h-[331px] mx-auto space-y-6 overflow-y-scroll ">
       {paginatedEvents.events.map((event) => {

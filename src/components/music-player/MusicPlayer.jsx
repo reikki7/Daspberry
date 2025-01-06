@@ -13,6 +13,7 @@ import {
   faVolumeMute,
   faCompactDisc,
 } from "@fortawesome/free-solid-svg-icons";
+import { ChevronsLeft } from "lucide-react";
 import { Howl } from "howler";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import artDefault from "../../assets/art-default.jpg";
@@ -40,7 +41,10 @@ const MusicPlayer = () => {
   const [songMetadata, setSongMetadata] = useState({});
   const [albumArtList, setAlbumArtList] = useState([]);
   const [sortedMusicFiles, setSortedMusicFiles] = useState([]);
-  const [isLoadingMetadataa, setIsLoadingMetadata] = useState(false);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
+  const [currentFileName, setCurrentFileName] = useState(null);
+  const [newSongsList, setNewSongsList] = useState([]);
+  const [isSongFetchPopUp, setIsSongFetchPopUp] = useState(false);
 
   const isShuffleRef = useRef(isShuffle);
   const isLoopingSingleRef = useRef(isLoopingSingle);
@@ -70,8 +74,10 @@ const MusicPlayer = () => {
   // sort music files by name, prioritize the title tag if it exists in the metadata, if not, use the file name
   useEffect(() => {
     const sortedFiles = [...musicFiles].sort((a, b) => {
-      const aTitle = songMetadata[a.path]?.title || a.name;
-      const bTitle = songMetadata[b.path]?.title || b.name;
+      const normalize = (str) =>
+        str.replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase(); // Remove only leading symbols
+      const aTitle = normalize(songMetadata[a.path]?.title || a.name);
+      const bTitle = normalize(songMetadata[b.path]?.title || b.name);
 
       return aTitle.localeCompare(bTitle);
     });
@@ -242,12 +248,35 @@ const MusicPlayer = () => {
     };
   }, [musicMenu, isHomeActive, isPlaying, currentSound]);
 
-  // Load music files from the system
-  const loadMusicFiles = async () => {
+  // Load music files and detect new files
+  const loadMusicFiles = async (refresh = false) => {
     try {
       const files = await invoke("get_music_files");
-      setMusicFiles(files);
-      setShuffledIndices(Array.from({ length: files.length }, (_, i) => i));
+
+      if (refresh) {
+        setNewSongsList([]);
+        // Compare with current state to find new files
+        const currentPaths = new Set(musicFiles.map((file) => file.path));
+        const newFiles = files.filter((file) => !currentPaths.has(file.path));
+
+        if (newFiles.length > 0) {
+          setNewSongsList((prevList) => [
+            ...prevList,
+            ...newFiles.map((file) => file.name.replace(".mp3", "")),
+          ]);
+        }
+
+        if (newFiles.length > 0) {
+          // Add new files and fetch metadata
+          setMusicFiles((prevFiles) => [...prevFiles, ...newFiles]);
+          await fetchSongMetadata([...musicFiles, ...newFiles], true);
+        } else {
+          console.log("No new songs found.");
+        }
+      } else {
+        setMusicFiles(files);
+        setShuffledIndices(Array.from({ length: files.length }, (_, i) => i));
+      }
     } catch (error) {
       console.error("Error loading music files:", error);
     }
@@ -423,6 +452,8 @@ const MusicPlayer = () => {
         }
 
         const blob = await response.blob();
+        console.log("Blob fetched successfully for:", file.name);
+        setCurrentFileName(file.name.replace(".mp3", ""));
         const metadata = await parseBlob(blob);
 
         let albumArtBlob = null;
@@ -463,7 +494,6 @@ const MusicPlayer = () => {
       }
     });
 
-    console.log(albumArtMap);
     setIsLoadingMetadata(false);
     setSongMetadata(metadataMap);
     setAlbumArtList(albumArtMap);
@@ -471,12 +501,14 @@ const MusicPlayer = () => {
 
   useEffect(() => {
     return () => {
-      // Clean up all albumArtList URLs only when the component unmounts
-      albumArtList?.forEach((url) => {
-        if (url !== artDefault) URL.revokeObjectURL(url);
-      });
+      // Cleanup album art URLs
+      if (Array.isArray(albumArtList)) {
+        albumArtList.forEach((url) => {
+          if (url !== artDefault) URL.revokeObjectURL(url);
+        });
+      }
     };
-  }, []); // Run this only once
+  }, []);
 
   const updateProgress = () => {
     if (currentSound && currentSound.playing()) {
@@ -713,6 +745,27 @@ const MusicPlayer = () => {
   };
 
   useEffect(() => {
+    if (isLoadingMetadata && currentFileName) {
+      setIsSongFetchPopUp(true);
+    }
+  }, [isLoadingMetadata, currentFileName]);
+
+  useEffect(() => {
+    let timer;
+    if (isSongFetchPopUp) {
+      // Set timeout to close popup after 30 seconds
+      timer = setTimeout(() => {
+        setIsSongFetchPopUp(false);
+      }, 50000);
+    }
+
+    return () => {
+      // Clear timeout if popup closes manually or on component unmount
+      clearTimeout(timer);
+    };
+  }, [isSongFetchPopUp]);
+
+  useEffect(() => {
     const handleWheel = (event) => {
       event.preventDefault();
       const delta = Math.sign(event.deltaY);
@@ -737,7 +790,7 @@ const MusicPlayer = () => {
   }, []);
 
   return (
-    <div className="flex w-full text-white rounded-3xl justify-between overflow-hidden relative">
+    <div className="flex w-full text-white rounded-3xl justify-between overflow-hidden ">
       {/* Foreground Content */}
       <div className="relative z-10 flex w-full justify-between items-center">
         {/* Volume */}
@@ -810,7 +863,12 @@ const MusicPlayer = () => {
               isShuffle={isShuffle}
               sortedIndices={shuffledIndices}
               fetchSongMetadata={fetchSongMetadata}
-              isLoadingMetadata={isLoadingMetadataa}
+              isLoadingMetadata={isLoadingMetadata}
+              loadMusicFiles={loadMusicFiles}
+              setIsSongFetchPopUp={setIsSongFetchPopUp}
+              setCurrentFileName={setCurrentFileName}
+              newSongsList={newSongsList}
+              setNewSongsList={setNewSongsList}
             />
           )}
 
@@ -882,6 +940,82 @@ const MusicPlayer = () => {
           />
         </div>
       </div>
+
+      {isSongFetchPopUp && (
+        <div
+          className={`absolute ${
+            musicMenu ? "right-5 w-64" : "-right-[250px] hover:right-5 w-72"
+          } text-sm top-20 p-6 group rounded-2xl bg-gray-950/50 backdrop-blur-xs backdrop-brightness-75 duration-300 border border-white/5 shadow-lg z-[250] overflow-hidden animate-fadeIn`}
+        >
+          <ChevronsLeft
+            className={`${
+              musicMenu ? "opacity-0" : "opacity-100 group-hover:opacity-0"
+            } absolute left-2 bottom-[84px] duration-300`}
+          />
+          <div className="relative">
+            <button
+              onClick={() => setIsSongFetchPopUp(false)}
+              className="absolute hover:rotate-90 duration-300 -top-4 -right-4 text-white/60 rounded-full p-2 hover:text-white"
+            >
+              ✕
+            </button>
+            {/* Loading section */}
+            <div className="mb-4">
+              <div
+                className={`text-center text-xs text-gray-400 font-medium mb-3 ${
+                  isLoadingMetadata && "animate-pulse"
+                }`}
+              >
+                {isLoadingMetadata ? "Collecting songs..." : "Library updated!"}
+              </div>
+              {isLoadingMetadata ? (
+                <div className="text-center text-white/90 font-medium truncate px-2 py-1 rounded-lg">
+                  {currentFileName || "\u00A0"}
+                </div>
+              ) : (
+                <div className="text-center text-white/90 font-medium truncate px-2 py-1 rounded-lg">
+                  {musicFiles.length} songs scanned.
+                </div>
+              )}
+            </div>
+
+            {/* Divider with gradient */}
+            <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent my-4" />
+
+            {newSongsList.length > 0 && (
+              // New songs counter
+              <div
+                className={`${
+                  !musicMenu ? "ml-10 group-hover:ml-0" : "ml-0"
+                } text-white/60 text-xs font-medium mb-3`}
+              >
+                {newSongsList.length} new songs found
+              </div>
+            )}
+
+            {/* Song list */}
+            <div
+              className={`${
+                !musicMenu ? "ml-10 group-hover:ml-0" : "ml-0"
+              } space-y-2 max-h-40 overflow-y-auto flex flex-col scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent`}
+            >
+              {newSongsList.length > 0
+                ? newSongsList.map((song, index) => (
+                    <div
+                      key={index}
+                      className="rounded-lg duration-300 truncate text-white/80"
+                    >
+                      {index !== 0 && (
+                        <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-3" />
+                      )}
+                      {song}
+                    </div>
+                  ))
+                : ""}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

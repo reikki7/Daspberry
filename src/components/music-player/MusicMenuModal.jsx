@@ -27,6 +27,11 @@ const MusicMenuModal = ({
   isLoopingSingle,
   fetchSongMetadata,
   isLoadingMetadata,
+  loadMusicFiles,
+  setIsSongFetchPopUp,
+  setCurrentFileName,
+  newSongsList,
+  setNewSongsList,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -69,8 +74,10 @@ const MusicMenuModal = ({
         return titleMatch || artistMatch;
       })
       .sort((a, b) => {
-        const metaA = metadata[a.path]?.title || a.name;
-        const metaB = metadata[b.path]?.title || b.name;
+        const normalize = (str) =>
+          str.replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase();
+        const metaA = normalize(metadata[a.path]?.title || a.name);
+        const metaB = normalize(metadata[b.path]?.title || b.name);
         return sortOrder === "asc"
           ? metaA.localeCompare(metaB)
           : metaB.localeCompare(metaA);
@@ -223,6 +230,7 @@ const MusicMenuModal = ({
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
+      setIsSongFetchPopUp(false);
       setMusicMenu(false);
       setIsUsingArrowKeys(false);
     }
@@ -387,8 +395,11 @@ const MusicMenuModal = ({
               </h2>
             </div>
             <button
-              onClick={() => setMusicMenu(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-white/60 hover:text-white duration-200"
+              onClick={() => {
+                setIsSongFetchPopUp(false);
+                setMusicMenu(false);
+              }}
+              className="w-8 h-8 flex items-center hover:rotate-90 justify-center rounded-full text-white/60 hover:text-white duration-200"
             >
               ✕
             </button>
@@ -501,12 +512,18 @@ const MusicMenuModal = ({
               </button>
               <button
                 onClick={async () => {
-                  // Call your `fetchSongMetadata` function to refetch metadata
+                  setCurrentFileName(null);
+                  await loadMusicFiles(true);
                   await fetchSongMetadata(musicFiles, true);
-                  alert("Metadata and cache updated successfully!");
+                  alert(
+                    `Music Library updated successfully!\n${
+                      newSongsList > 0 ? `\nNew Songs: ${newSongsList}` : ""
+                    }\nSongs scanned: ${musicFiles.length}`
+                  );
                 }}
+                disabled={isLoadingMetadata}
                 className="text-white/60 group px-2 hover:text-white duration-200"
-                title="Refresh Metadata"
+                title="Refresh Library"
               >
                 <RefreshCw
                   size={18}
@@ -528,9 +545,8 @@ const MusicMenuModal = ({
           {/* Music List */}
           <div
             ref={scrollContainerRef}
-            className={`p-2 overflow-y-auto focus:outline-none custom-scrollbar
-              ${filteredMusic.length < 12 && "mr-2.5"}
-              ${currentTrack ? "h-[573px]" : "h-[717px]"} `}
+            className={`p-2 overflow-y-auto custom-scrollbar focus:outline-none 
+    ${currentTrack ? "h-[573px]" : "h-[717px]"} `}
             role="listbox"
             tabIndex={-1}
             aria-activedescendant={`song-${focusedIndex}`}

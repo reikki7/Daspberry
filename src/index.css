@@ -38,6 +38,7 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  scrollbar-gutter: stable;
 }
 
 @keyframes scroll {
@@ -138,11 +139,16 @@ input[type="time"]::-moz-calendar-picker-indicator {
 }
 
 ::-webkit-scrollbar {
+  scrollbar-gutter: stable;
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.custom-scrollbar {
+  scrollbar-gutter: stable;
 }
 
 ::-webkit-scrollbar-thumb {

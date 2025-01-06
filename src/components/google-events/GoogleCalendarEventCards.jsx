@@ -1,13 +1,11 @@
 import React from "react";
-import { FaCalendarAlt, FaClock } from "react-icons/fa";
 
 const GoogleCalendarEventCards = ({
   sortedAndFilteredEvents,
   setSelectedEvent,
-  formatEventTime,
 }) => {
   return (
-    <div className="flex flex-col gap-4 overflow-y-auto overflow-x-hidden max-h-full w-full rounded-lg shadow-lg">
+    <div className="flex flex-col mt-1 gap-1.5 overflow-y-auto overflow-x-hidden max-h-full w-full rounded-lg shadow-lg">
       {sortedAndFilteredEvents.map((event, index) => (
         <button
           key={index}
@@ -33,7 +31,7 @@ const GoogleCalendarEventCards = ({
 
           {/* Event Details */}
           <div className="w-40 flex flex-col text-left">
-            <h3 className="text-sm font-semibold text-white truncate">
+            <h3 className="text-sm font-semibold w-32 text-white truncate">
               {event.summary}
             </h3>
             <span className="text-[11px] text-gray-300">
