@@ -25,6 +25,8 @@ import { CopyToClipboard } from "react-copy-to-clipboard";
 import "react-toastify/dist/ReactToastify.css";
 import eventBus from "../../utils/eventBus";
 
+import ProjectFilter from "./ProjectFilter";
+
 const LocalTaskList = lazy(() => import("./LocalTaskList"));
 import SelectedLocalTaskModal from "./SelectedLocalTaskModal";
 import CompletedLocalTaskModal from "./CompletedLocalTaskModal";
@@ -46,6 +48,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   const [copied, setCopied] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [currentProjectFilter, setCurrentProjectFilter] = useState("all");
   const initialTaskRef = useRef(null);
 
   // Include project as empty string by default
@@ -488,16 +491,52 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     eventBus.emit("events_updated");
   };
 
-  const totalIncompleteTasks = tasks.filter((task) => !task.completed).length;
+  // Replace your existing totalIncompleteTasks calculation with this:
+  const totalIncompleteTasks = useMemo(() => {
+    let filteredTasks = tasks.filter((task) => !task.completed);
+
+    if (currentProjectFilter !== "all") {
+      filteredTasks = filteredTasks.filter((task) =>
+        currentProjectFilter === "No Project"
+          ? !task.project
+          : task.project === currentProjectFilter
+      );
+    }
+
+    return filteredTasks.length;
+  }, [tasks, currentProjectFilter]);
 
   // Pagination
-  const totalPages = Math.ceil(
-    tasks.filter((task) => !task.completed).length / ITEMS_PER_PAGE
-  );
+  const totalPages = useMemo(() => {
+    let filteredTasks = tasks.filter((task) => !task.completed);
+
+    // Apply project filter
+    if (currentProjectFilter !== "all") {
+      filteredTasks = filteredTasks.filter((task) =>
+        currentProjectFilter === "No Project"
+          ? !task.project
+          : task.project === currentProjectFilter
+      );
+    }
+
+    return Math.ceil(filteredTasks.length / ITEMS_PER_PAGE);
+  }, [tasks, currentProjectFilter, ITEMS_PER_PAGE]);
 
   const currentTasks = useMemo(() => {
-    const tasksWithDueDate = tasks
-      .filter((task) => task.date && !task.completed)
+    let filteredTasks = tasks.filter((task) => !task.completed);
+
+    // Apply project filter
+    if (currentProjectFilter !== "all") {
+      filteredTasks = filteredTasks.filter((task) =>
+        currentProjectFilter === "Unassigned"
+          ? !task.project || task.project === ""
+          : task.project === currentProjectFilter
+      );
+    }
+
+    // Sort tasks as before
+    const tasksWithDueDate = filteredTasks
+      .filter((task) => task.date)
       .sort((a, b) => {
         const dateA = new Date(a.date).getTime() || Infinity;
         const dateB = new Date(b.date).getTime() || Infinity;
@@ -512,15 +551,15 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
         return dateA - dateB;
       });
 
-    const tasksWithoutDueDate = tasks
-      .filter((task) => !task.date && !task.completed)
+    const tasksWithoutDueDate = filteredTasks
+      .filter((task) => !task.date)
       .sort((a, b) => a.title.localeCompare(b.title));
 
     return [...tasksWithDueDate, ...tasksWithoutDueDate].slice(
       (currentPage - 1) * ITEMS_PER_PAGE,
       currentPage * ITEMS_PER_PAGE
     );
-  }, [tasks, currentPage]);
+  }, [tasks, currentPage, currentProjectFilter]);
 
   const goToPreviousPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -559,25 +598,32 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
             {totalIncompleteTasks} Tasks
           </span>
         </div>
+        <div className="flex items-center gap-4">
+          <ProjectFilter
+            tasks={tasks}
+            onFilterChange={setCurrentProjectFilter}
+            setCurrentPage={setCurrentPage}
+          />
 
-        {/* Action Buttons */}
-        <div className="flex rounded-lg overflow-hidden">
-          {/* Completed Tasks Button */}
-          <button
-            onClick={() => setCompletedTasksModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/30 text-green-200 shadow-sm hover:shadow-md hover:bg-emerald-500/50 transition-all duration-300 text-sm font-medium"
-          >
-            <BookCheck size={16} />
-          </button>
+          {/* Action Buttons */}
+          <div className="flex rounded-lg overflow-hidden">
+            {/* Completed Tasks Button */}
+            <button
+              onClick={() => setCompletedTasksModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500/30 text-green-200 shadow-sm hover:shadow-md hover:bg-emerald-500/50 transition-all duration-300 text-sm font-medium"
+            >
+              <BookCheck size={16} />
+            </button>
 
-          {/* Add Task Button */}
-          <button
-            onClick={() => setNewTaskModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-1.5 bg-purple-500/20 text-white shadow-sm hover:shadow-md hover:bg-purple-500/40 transition-all duration-300 text-sm font-medium"
-          >
-            <PlusCircle size={16} />
-            <span>Add Task</span>
-          </button>
+            {/* Add Task Button */}
+            <button
+              onClick={() => setNewTaskModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-1.5 bg-purple-500/20 text-white shadow-sm hover:shadow-md hover:bg-purple-500/40 transition-all duration-300 text-sm font-medium"
+            >
+              <PlusCircle size={16} />
+              <span>Add Task</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import { syncLocalTasksWithFirestore } from "../utils/syncLocalTasks";
 import { Link } from "react-router-dom";
 
 // Lazy-load the modal for individual task editing
@@ -14,6 +15,7 @@ const Projects = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
   const dateInputRef = useRef(null);
 
   useEffect(() => {
@@ -32,6 +34,7 @@ const Projects = () => {
       }
     };
     fetchTasks();
+    syncLocalTasksWithFirestore(tasks, setTasks, handleUpdateTask);
   }, []);
 
   // Group tasks by project
@@ -46,22 +49,46 @@ const Projects = () => {
     setGroupedTasks(groups);
   }, [tasks]);
 
+  const checkOnlineStatus = async () => {
+    try {
+      await fetch("https://firebase.google.com", { mode: "no-cors" });
+      setIsOnline(true);
+    } catch (error) {
+      setIsOnline(false);
+    }
+  };
+
   const renameProject = async (oldProjectName, newProjectName) => {
     // Guard: skip if empty or same name
     if (!newProjectName.trim() || newProjectName === oldProjectName) return;
 
-    const updatedTasks = tasks.map((t) =>
-      t.project === oldProjectName
-        ? { ...t, project: newProjectName.trim() }
-        : t
-    );
+    checkOnlineStatus();
+
+    const updatedTasks = tasks.map((t) => {
+      if (t.project === oldProjectName) {
+        return {
+          ...t,
+          project: newProjectName.trim(),
+          updated_at: new Date().toISOString(), // IMPORTANT!
+          pending_sync: !isOnline,
+        };
+      }
+      return t;
+    });
+
+    // Update your local state
     setTasks(updatedTasks);
 
-    // Save updated tasks to Tauri
-    try {
-      await invoke("save_local_tasks", { tasks: updatedTasks });
-    } catch (error) {
-      console.error("Error saving renamed project tasks:", error);
+    // Save them locally (your Tauri local cache)
+    await invoke("save_local_tasks", { tasks: updatedTasks });
+
+    // If you're online, push them up to Firestore
+    if (isOnline) {
+      await syncLocalTasksWithFirestore(
+        updatedTasks,
+        setTasks,
+        handleUpdateTask
+      );
     }
   };
 
@@ -73,6 +100,11 @@ const Projects = () => {
   };
 
   const handleUpdateTask = async () => {
+    if (!selectedTask) {
+      setErrorMessage("No task selected.");
+      return;
+    }
+
     if (!selectedTask.title.trim()) {
       setErrorMessage("Task title cannot be empty.");
       return;
@@ -93,7 +125,6 @@ const Projects = () => {
     setSelectedTask(null);
     setEditMode(false);
   };
-
   const handleDeleteTask = async (id) => {
     const updatedTasks = tasks.filter((t) => t.id !== id);
     setTasks(updatedTasks);

@@ -2,6 +2,7 @@
   "name": "dasperry",
   "private": true,
   "version": "0.0.0",
+  "publisher": "Reinata Kidd",
   "type": "module",
   "scripts": {
     "dev": "vite",

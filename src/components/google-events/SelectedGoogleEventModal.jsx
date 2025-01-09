@@ -1,4 +1,69 @@
+import React from "react";
 import { FaCalendarAlt, FaClock, FaMapMarkerAlt } from "react-icons/fa";
+
+const ParsedDescription = ({ text }) => {
+  // Function to parse URLs and convert them to clickable links
+  const parseLinks = (content) => {
+    // Regular expression to match URLs, including those within anchor tags
+    const urlRegex =
+      /<a\s+(?:[^>]*?\s+)?href="([^"]*)"[^>]*>(.*?)<\/a>|(\b(?:https?:\/\/|www\.)[^\s<>]+\b)/gi;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = urlRegex.exec(content)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(content.slice(lastIndex, match.index));
+      }
+
+      if (match[1] && match[2]) {
+        // Handle existing anchor tags
+        parts.push(
+          <a
+            key={match.index}
+            href={match[1]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-300 hover:text-blue-200 duration-200 underline break-all"
+          >
+            {match[2]}
+          </a>
+        );
+      } else if (match[3]) {
+        // Convert plain URLs to anchor tags
+        parts.push(
+          <a
+            key={match.index}
+            href={
+              match[3].startsWith("www.") ? `https://${match[3]}` : match[3]
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-300 hover:text-blue-200 duration-200 underline break-all"
+          >
+            {match[3]}
+          </a>
+        );
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.slice(lastIndex));
+    }
+
+    return parts;
+  };
+
+  return (
+    <p className="text-white/70 leading-relaxed break-words whitespace-pre-wrap">
+      {parseLinks(text)}
+    </p>
+  );
+};
 
 const SelectedGoogleEventModal = ({ selectedEvent, setSelectedEvent }) => {
   return (
@@ -82,9 +147,7 @@ const SelectedGoogleEventModal = ({ selectedEvent, setSelectedEvent }) => {
           {/* Description */}
           {selectedEvent.description && (
             <div className="bg-gray-800/30 p-4 rounded-lg border border-gray-700/50 shadow-md">
-              <p className="text-white/70 leading-relaxed">
-                {selectedEvent.description}
-              </p>
+              <ParsedDescription text={selectedEvent.description} />
             </div>
           )}
         </div>

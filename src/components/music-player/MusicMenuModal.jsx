@@ -31,6 +31,7 @@ const MusicMenuModal = ({
   setIsSongFetchPopUp,
   setCurrentFileName,
   newSongsList,
+  setRemovedFiles,
   setNewSongsList,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -513,6 +514,8 @@ const MusicMenuModal = ({
               <button
                 onClick={async () => {
                   setCurrentFileName(null);
+                  setRemovedFiles([]);
+                  setNewSongsList([]);
                   await loadMusicFiles(true);
                   await fetchSongMetadata(musicFiles, true);
                   alert(
