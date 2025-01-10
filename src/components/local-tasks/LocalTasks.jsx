@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { invoke } from "@tauri-apps/api/tauri";
+import { shell } from "@tauri-apps/api";
 import { syncLocalTasksWithFirestore } from "../../utils/syncLocalTasks";
 import { db } from "../../config/firebase";
 import { doc, deleteDoc, setDoc, writeBatch } from "firebase/firestore";
@@ -212,7 +213,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     setCurrentPage(1); // Reset to the first page
   };
 
-  const processTaskDescription = (notes) => {
+  const processTaskDescription = (notes, clickable = true) => {
     if (!notes) return null;
     return notes
       .split(/(`{3}[\s\S]*?`{3}|https?:\/\/[^\s]+|\n|- )/g)
@@ -265,17 +266,19 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
         // Handle URLs
         if (segment.match(/https?:\/\/[^\s]+/)) {
-          return (
+          return clickable ? (
             <a
               key={index}
-              href={segment}
+              href="#"
               className="text-blue-500 underline"
-              target="_blank"
-              rel="noopener noreferrer"
-              tabIndex={-1}
+              onClick={() => shell.open(segment)}
             >
               {segment}
             </a>
+          ) : (
+            <span key={index} className="text-blue-400 underline">
+              {segment}
+            </span>
           );
         }
 

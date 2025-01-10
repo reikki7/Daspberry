@@ -74,7 +74,7 @@ const LocalTaskList = memo(
                     className="w-full mx-2 text-xs text-white/70 break-words whitespace-pre-wrap flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide"
                     tabIndex={-1}
                   >
-                    {processTaskDescription(task.description)}
+                    {processTaskDescription(task.description, false)}
                   </div>
                 </button>
               ))}
