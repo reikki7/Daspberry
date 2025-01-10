@@ -26,7 +26,7 @@ const CustomDropdown = ({
           onClick={() => {
             setIsOpen((prev) => !prev), setSearchTerm("");
           }}
-          className="inline-flex w-full justify-between items-center bg-gray-950/40 text-white rounded-lg px-4 py-2 pr-10 border border-gray-600 hover:border-cyan-400 duration-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="inline-flex w-full justify-between items-center bg-gray-950/40 text-white rounded-lg px-4 py-2 pr-10 border border-gray-600 hover:border-cyan-400 duration-500 focus:outline-none focus:ring-2 focus:ring-white"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
         >

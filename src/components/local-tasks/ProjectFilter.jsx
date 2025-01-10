@@ -7,13 +7,19 @@ const ProjectFilter = ({ tasks, onFilterChange, setCurrentPage }) => {
   const dropdownRef = useRef(null);
 
   const projects = useMemo(() => {
+    const incompleteTasks = tasks.filter((t) => !t.completed);
+    const onlyUnassigned = incompleteTasks.every(
+      (t) => !t.project || t.project === ""
+    );
+
+    if (onlyUnassigned) {
+      return ["all"];
+    }
+
     const uniqueProjects = [
-      ...new Set(
-        tasks.filter((t) => !t.completed).map((t) => t.project || "Unassigned")
-      ),
+      ...new Set(incompleteTasks.map((t) => t.project || "Unassigned")),
     ];
 
-    // Sort projects: "all" first, actual projects alphabetically, "Unassigned" last
     return [
       "all",
       ...uniqueProjects.filter((p) => p !== "Unassigned").sort(),
@@ -21,13 +27,23 @@ const ProjectFilter = ({ tasks, onFilterChange, setCurrentPage }) => {
     ];
   }, [tasks]);
 
-  // In your ProjectFilter component, modify the handleProjectChange function:
   const handleProjectChange = (project) => {
     setSelectedProject(project);
-    setCurrentPage(1); // Reset to first page when changing filters
+    setCurrentPage(1);
     onFilterChange(project);
     setIsOpen(false);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -40,6 +56,24 @@ const ProjectFilter = ({ tasks, onFilterChange, setCurrentPage }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const incompleteTasks = tasks.filter((task) => !task.completed);
+    const selectedProjectTasks =
+      selectedProject === "all"
+        ? incompleteTasks
+        : incompleteTasks.filter((task) =>
+            selectedProject === "Unassigned"
+              ? !task.project || task.project === ""
+              : task.project === selectedProject
+          );
+
+    if (selectedProject !== "all" && selectedProjectTasks.length === 0) {
+      setSelectedProject("all");
+      setCurrentPage(1);
+      onFilterChange("all");
+    }
+  }, [tasks, selectedProject, onFilterChange, setCurrentPage]);
 
   const getDisplayText = (project) => {
     if (project === "all") return "All Projects";

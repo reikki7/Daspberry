@@ -72,6 +72,15 @@ const EventMap = ({ isLoaded, loadError }) => {
             position: { lat: event.latitude, lng: event.longitude },
             title: event.title,
           });
+
+          // Add click event listener to the marker
+          marker.addListener("click", () => {
+            mapRef.current?.panTo({
+              lat: event.latitude,
+              lng: event.longitude,
+            });
+          });
+
           return marker;
         });
         markersRef.current = markers;
@@ -161,7 +170,7 @@ const EventMap = ({ isLoaded, loadError }) => {
     return (
       <div
         data-tauri-drag-region
-        className="absolute inset-0 flex items-center justify-center z-50"
+        className="absolute left-[650px] top-[300px] flex items-center justify-center z-50"
       >
         <ScaleLoader color="#8dccff" />
       </div>
@@ -183,6 +192,10 @@ const EventMap = ({ isLoaded, loadError }) => {
           streetViewControlOptions: {
             position: window.google.maps.ControlPosition.TOP_RIGHT,
           },
+          // disable click events on the map
+          clickableIcons: false,
+          // disable info windows
+          disableInfoWindows: true,
         }}
       />
     </div>

@@ -116,8 +116,6 @@ export async function syncLocalTasksWithFirestore(
 
     setLocalTasks(updatedTasks);
     await saveLocalTasks(updatedTasks);
-
-    console.log("Sync complete with deletion handling!");
   } catch (error) {
     console.error("Error syncing tasks with Firestore:", error);
     throw error;

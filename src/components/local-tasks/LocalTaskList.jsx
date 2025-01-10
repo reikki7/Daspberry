@@ -39,11 +39,17 @@ const LocalTaskList = memo(
 
                   {/* Header Section */}
                   <div className="mx-2 mt-1 relative">
-                    <h3 className="text-white font-light tracking-wide text-lg break-words">
+                    <h3
+                      className="text-white font-light tracking-wide text-lg break-words"
+                      tabIndex={-1}
+                    >
                       {task.title}
                     </h3>
                     <div className="flex mt-3 justify-between items-center">
-                      <div className="text-[12px] text-gray-200/70 flex items-center bg-white/5 px-3 py-1 rounded-full">
+                      <div
+                        className="text-[12px] text-gray-200/70 flex items-center bg-white/5 px-3 py-1 rounded-full"
+                        tabIndex={-1}
+                      >
                         <CalendarIcon className="w-4 h-4 mr-2" />
                         {task.date
                           ? new Date(task.date).toLocaleDateString("en-GB", {
@@ -64,7 +70,10 @@ const LocalTaskList = memo(
                   </div>
 
                   {/* Task Description */}
-                  <div className="w-full mx-2 text-xs text-white/70 break-words whitespace-pre-wrap flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide ">
+                  <div
+                    className="w-full mx-2 text-xs text-white/70 break-words whitespace-pre-wrap flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide"
+                    tabIndex={-1}
+                  >
                     {processTaskDescription(task.description)}
                   </div>
                 </button>
@@ -74,7 +83,7 @@ const LocalTaskList = memo(
         </div>
 
         {/* Pagination */}
-        {totalIncompleteTasks > 5 && (
+        {totalIncompleteTasks > 0 && (
           <div className="flex items-center justify-center gap-6 mt-5">
             <button
               onClick={goToPreviousPage}

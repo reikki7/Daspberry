@@ -260,10 +260,6 @@ const MusicPlayer = () => {
       metadataStore.delete(filePath);
       albumArtStore.delete(filePath);
 
-      transaction.oncomplete = () => {
-        console.log("Removed from cache:", filePath);
-      };
-
       transaction.onerror = () => {
         console.error("Error removing from cache:", transaction.error);
       };
@@ -297,7 +293,6 @@ const MusicPlayer = () => {
           (file) => !scannedPaths.has(file.path)
         );
         if (removed.length > 0) {
-          console.log("Removed songs detected:", removed);
           setRemovedFiles(removed);
           setMusicFiles((prevFiles) =>
             prevFiles.filter((file) => scannedPaths.has(file.path))
@@ -493,7 +488,6 @@ const MusicPlayer = () => {
         }
 
         const blob = await response.blob();
-        console.log("Blob fetched successfully for:", file.name);
         setCurrentFileName(file.name.replace(".mp3", ""));
         const metadata = await parseBlob(blob);
 

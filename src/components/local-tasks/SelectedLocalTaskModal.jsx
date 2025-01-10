@@ -1,6 +1,4 @@
-import { useMemo } from "react";
-import CreatableSelect from "react-select/creatable";
-import { buildProjectOptions } from "../../utils/buildProjectOptions";
+import { useEffect } from "react";
 import { syncLocalTasksWithFirestore } from "../../utils/syncLocalTasks";
 
 import {
@@ -11,6 +9,7 @@ import {
   Pencil,
   Eye,
 } from "lucide-react";
+import AutocompleteInput from "./AutoCompleteInput";
 
 const SelectedLocalTaskModal = ({
   tasks,
@@ -31,55 +30,8 @@ const SelectedLocalTaskModal = ({
   handleTaskComplete,
   processTaskDescription,
   projects,
-  setProjects,
   isOnline,
 }) => {
-  // Convert projects array to react-select options
-  const projectOptions = buildProjectOptions(projects);
-
-  // Find the currently selected option
-  const selectedOption =
-    projectOptions.find((option) => option.value === selectedTask.project) ||
-    null;
-
-  const customTheme = useMemo(
-    () => (theme) => ({
-      ...theme,
-      borderRadius: 8,
-      colors: {
-        ...theme.colors,
-        primary25: "#0ea5e9",
-        primary: "#06B6D4",
-        neutral0: "#1f2937",
-        neutral5: "#374151",
-        neutral10: "#4B5563",
-        neutral20: "rgba(255,255,255,0.2)",
-        neutral30: "rgba(255,255,255,0.3)",
-        neutral40: "rgba(255,255,255,0.4)",
-        neutral50: "rgba(255,255,255,0.5)",
-        neutral60: "rgba(255,255,255,0.6)",
-        neutral70: "rgba(255,255,255,0.7)",
-        neutral80: "rgba(255,255,255,0.8)",
-        neutral90: "rgba(255,255,255,0.9)",
-      },
-    }),
-    []
-  );
-
-  // Handle creation of a new project
-  const handleCreateNewProject = (inputValue) => {
-    // If the user typed a new project name, optionally add it to 'projects' array
-    if (inputValue && setProjects && !projects.includes(inputValue)) {
-      setProjects((prev) => [...prev, inputValue]);
-    }
-
-    // Update the selectedTask with the new project name
-    setSelectedTask((prev) => ({
-      ...prev,
-      project: inputValue,
-    }));
-  };
-
   const handleOverlayClick = (e) => {
     e.stopPropagation();
     if (e.target === e.currentTarget) {
@@ -98,6 +50,17 @@ const SelectedLocalTaskModal = ({
       }
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        handleUpdateTask();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleUpdateTask]);
 
   return (
     <div
@@ -124,7 +87,6 @@ const SelectedLocalTaskModal = ({
               type="text"
               value={selectedTask.title}
               onChange={handleTitleChange}
-              onBlur={handleUpdateTask}
               className="text-cyan-50 text-xl w-full mr-8 truncate font-light tracking-wide bg-transparent focus:outline-none transition-colors placeholder-cyan-200/30"
               placeholder="タスクを入力 • Enter task title"
               onKeyDown={(e) => e.stopPropagation()}
@@ -144,7 +106,7 @@ const SelectedLocalTaskModal = ({
         )}
 
         <div className="p-6 overflow-y-auto scrollbar-hide">
-          <div className="relative flex items-center justify-between text-sm mb-4 group">
+          <div className=" flex items-center justify-between text-sm mb-4 group">
             <div className="flex gap-3">
               {/* Date Picker */}
               <div
@@ -174,103 +136,16 @@ const SelectedLocalTaskModal = ({
               </div>
 
               <div className="min-w-[210px]">
-                <CreatableSelect
-                  options={projectOptions}
-                  value={selectedOption}
-                  onChange={(newValue) => {
-                    setSelectedTask((prev) => ({
-                      ...prev,
-                      project: newValue ? newValue.value : "",
-                    }));
-                  }}
-                  onCreateOption={handleCreateNewProject}
+                <AutocompleteInput
+                  value={selectedTask.project || ""}
+                  onChange={(newValue) =>
+                    setSelectedTask({
+                      ...selectedTask,
+                      project: newValue,
+                    })
+                  }
+                  projects={projects}
                   placeholder="No Project Set"
-                  isClearable
-                  isSearchable
-                  menuPortalTarget={document.body}
-                  styles={{
-                    control: (provided, state) => ({
-                      ...provided,
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderRadius: "0.5rem",
-                      padding: "0.25rem",
-                      boxShadow: state.isFocused
-                        ? "0 0 0 3px rgba(34,211,238,0.3)"
-                        : "none",
-                      "&:hover": {
-                        borderColor: "rgba(34,211,238,0.7)",
-                      },
-                      minHeight: "40px",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease", // Add transition
-                    }),
-                    menu: (provided) => ({
-                      ...provided,
-                      backgroundColor: "rgb(17, 24, 39)", // Match control background
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      borderRadius: "0.5rem",
-                      marginTop: "0.25rem",
-                      zIndex: 9999,
-                      overflow: "hidden",
-                    }),
-                    option: (provided, state) => ({
-                      ...provided,
-                      backgroundColor: state.isFocused
-                        ? "#008eae"
-                        : "transparent",
-                      color: "white",
-                      cursor: "pointer",
-                      padding: "0.5rem 1rem",
-                      "&:active": {
-                        backgroundColor: "#0284c7",
-                      },
-                    }),
-                    singleValue: (provided) => ({
-                      ...provided,
-                      color: "white",
-                    }),
-                    placeholder: (provided) => ({
-                      ...provided,
-                      color: "rgba(255,255,255,0.6)",
-                    }),
-                    input: (provided) => ({
-                      ...provided,
-                      color: "white",
-                    }),
-                    valueContainer: (provided) => ({
-                      ...provided,
-                      padding: "2px 8px",
-                    }),
-                    menuPortal: (base) => ({
-                      ...base,
-                      zIndex: 9999,
-                    }),
-                    container: (provided) => ({
-                      ...provided,
-                      minWidth: "210px",
-                    }),
-                    dropdownIndicator: (provided) => ({
-                      ...provided,
-                      color: "rgba(255,255,255,0.6)",
-                      padding: "0 8px",
-                      "&:hover": {
-                        color: "#06b6d4",
-                      },
-                    }),
-                    clearIndicator: (provided) => ({
-                      ...provided,
-                      color: "rgba(255,255,255,0.6)",
-                      padding: "0 4px",
-                      "&:hover": {
-                        color: "#06b6d4",
-                      },
-                    }),
-                    indicatorSeparator: () => ({
-                      display: "none",
-                    }),
-                  }}
-                  theme={customTheme}
-                  formatCreateLabel={(val) => `Create "${val}"`}
                 />
               </div>
             </div>
@@ -352,7 +227,7 @@ const SelectedLocalTaskModal = ({
                     description: e.target.value,
                   })
                 }
-                className="w-full bg-white/5 h-[594px] text-white whitespace-pre-wrap border border-white/10 hover:border-white/20 focus:border-cyan-500/30 rounded-lg focus:outline-none p-4 font-light tracking-wide transition-all duration-300 placeholder-cyan-200/30"
+                className="w-full bg-white/5 h-[594px] text-white whitespace-pre-wrap border border-white/10 hover:border-white/20 focus:white/30 rounded-lg focus:outline-none p-4 font-light tracking-wide transition-all duration-300 placeholder-cyan-200/30"
                 placeholder="Enter task description"
                 rows={5}
               />

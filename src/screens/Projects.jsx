@@ -1,53 +1,97 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
+import { Link } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/tauri";
 import { syncLocalTasksWithFirestore } from "../utils/syncLocalTasks";
-import { Link } from "react-router-dom";
 
-// Lazy-load the modal for individual task editing
 const SelectedLocalTaskModal = lazy(() =>
   import("../components/local-tasks/SelectedLocalTaskModal")
 );
 
+function ProjectCard({
+  projectName,
+  projectTasks,
+  renameProject,
+  handleTaskClick,
+}) {
+  const [editing, setEditing] = useState(false);
+  const [tempName, setTempName] = useState(projectName);
+
+  const handleBlurOrSubmit = () => {
+    renameProject(projectName, tempName);
+    setEditing(false);
+  };
+
+  return (
+    <div
+      className="break-inside-avoid w-full
+                 bg-gradient-to-br from-white/5 to-black/10
+                 backdrop-blur-md border border-white/10 rounded-xl
+                 shadow-lg p-4 mb-5
+                 hover:border-white/5 hover:shadow-black/30
+                 transition-all duration-300"
+    >
+      {editing ? (
+        <input
+          className="bg-transparent border-b border-cyan-400
+                     focus:outline-none focus:white
+                     text-xl font-semibold mb-3 w-full
+                     transition-colors"
+          value={tempName}
+          autoFocus
+          onChange={(e) => setTempName(e.target.value)}
+          onBlur={handleBlurOrSubmit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleBlurOrSubmit();
+            }
+          }}
+        />
+      ) : (
+        <h2
+          className="text-xl font-semibold mb-3 cursor-pointer"
+          onDoubleClick={() => setEditing(true)}
+          title="Double-click to rename project"
+        >
+          {projectName}
+        </h2>
+      )}
+
+      <ul className="space-y-2">
+        {projectTasks.map((task) => (
+          <li
+            key={task.id}
+            className="text-sm text-gray-100
+                       bg-white/5 px-3 py-2 rounded-md
+                       hover:bg-gray-400/20 transition-colors
+                       cursor-pointer"
+            onClick={() => handleTaskClick(task)}
+          >
+            {task.title || "Untitled Task"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const Projects = () => {
   const [tasks, setTasks] = useState([]);
   const [groupedTasks, setGroupedTasks] = useState({});
-
   const [selectedTask, setSelectedTask] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isOnline, setIsOnline] = useState(true);
   const dateInputRef = useRef(null);
+  const initialTaskRef = useRef(null);
 
-  useEffect(() => {
-    // Preload the modal as soon as component mounts
-    import("../components/local-tasks/SelectedLocalTaskModal");
-
-    // Load tasks from Tauri
-    const fetchTasks = async () => {
-      try {
-        const loadedTasks = await invoke("load_local_tasks");
-        if (Array.isArray(loadedTasks)) {
-          setTasks(loadedTasks);
-        }
-      } catch (error) {
-        console.error("Error loading tasks:", error);
-      }
-    };
-    fetchTasks();
-    syncLocalTasksWithFirestore(tasks, setTasks, handleUpdateTask);
-  }, []);
-
-  // Group tasks by project
-  useEffect(() => {
-    const groups = tasks.reduce((acc, task) => {
-      if (task.completed) return acc; // skip completed tasks
-      if (!task.project) return acc; // skip tasks with no project
-      if (!acc[task.project]) acc[task.project] = [];
-      acc[task.project].push(task);
-      return acc;
-    }, {});
-    setGroupedTasks(groups);
-  }, [tasks]);
+  const saveTasks = async (updatedTasks) => {
+    try {
+      await invoke("save_local_tasks", { tasks: updatedTasks });
+    } catch (error) {
+      console.error("Error saving tasks:", error);
+    }
+  };
 
   const checkOnlineStatus = async () => {
     try {
@@ -58,43 +102,83 @@ const Projects = () => {
     }
   };
 
+  useEffect(() => {
+    import("../components/local-tasks/SelectedLocalTaskModal");
+
+    const fetchTasks = async () => {
+      try {
+        const loadedTasks = await invoke("load_local_tasks");
+        if (Array.isArray(loadedTasks)) {
+          setTasks(loadedTasks);
+          await checkOnlineStatus();
+          if (isOnline) {
+            await syncLocalTasksWithFirestore(loadedTasks, setTasks, saveTasks);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading tasks:", error);
+      }
+    };
+
+    fetchTasks();
+  }, []);
+
+  useEffect(() => {
+    const groups = tasks.reduce((acc, task) => {
+      if (task.completed) return acc;
+      if (!task.project) return acc;
+      if (!acc[task.project]) acc[task.project] = [];
+      acc[task.project].push(task);
+      return acc;
+    }, {});
+    setGroupedTasks(groups);
+  }, [tasks]);
+
+  useEffect(() => {
+    if (!isOnline) return;
+
+    const syncPendingTasks = async () => {
+      const tasksToSync = tasks.filter((t) => t.pending_sync);
+      if (tasksToSync.length > 0) {
+        try {
+          await syncLocalTasksWithFirestore(tasks, setTasks, saveTasks);
+        } catch (error) {
+          console.error("Error syncing tasks:", error);
+        }
+      }
+    };
+
+    syncPendingTasks();
+  }, [isOnline]);
+
   const renameProject = async (oldProjectName, newProjectName) => {
-    // Guard: skip if empty or same name
     if (!newProjectName.trim() || newProjectName === oldProjectName) return;
 
-    checkOnlineStatus();
+    await checkOnlineStatus();
 
-    const updatedTasks = tasks.map((t) => {
-      if (t.project === oldProjectName) {
+    const updatedTasks = tasks.map((task) => {
+      if (task.project === oldProjectName) {
         return {
-          ...t,
+          ...task,
           project: newProjectName.trim(),
-          updated_at: new Date().toISOString(), // IMPORTANT!
+          updated_at: new Date().toISOString(),
           pending_sync: !isOnline,
         };
       }
-      return t;
+      return task;
     });
 
-    // Update your local state
     setTasks(updatedTasks);
+    await saveTasks(updatedTasks);
 
-    // Save them locally (your Tauri local cache)
-    await invoke("save_local_tasks", { tasks: updatedTasks });
-
-    // If you're online, push them up to Firestore
     if (isOnline) {
-      await syncLocalTasksWithFirestore(
-        updatedTasks,
-        setTasks,
-        handleUpdateTask
-      );
+      await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
     }
   };
 
-  // --- INDIVIDUAL TASK MODAL LOGIC ---
   const handleTaskClick = (task) => {
     setSelectedTask(task);
+    initialTaskRef.current = JSON.stringify(task);
     setEditMode(false);
     setErrorMessage("");
   };
@@ -110,29 +194,38 @@ const Projects = () => {
       return;
     }
 
-    const updatedTasks = tasks.map((t) =>
-      t.id === selectedTask.id ? selectedTask : t
-    );
-    setTasks(updatedTasks);
+    await checkOnlineStatus();
 
-    try {
-      await invoke("save_local_tasks", { tasks: updatedTasks });
-    } catch (error) {
-      console.error("Error saving tasks:", error);
+    const updatedTask = {
+      ...selectedTask,
+      updated_at: new Date().toISOString(),
+      pending_sync: !isOnline,
+    };
+
+    const updatedTasks = tasks.map((t) =>
+      t.id === updatedTask.id ? updatedTask : t
+    );
+
+    setTasks(updatedTasks);
+    await saveTasks(updatedTasks);
+
+    if (isOnline) {
+      await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
     }
 
-    // Reset modal state
     setSelectedTask(null);
     setEditMode(false);
   };
+
   const handleDeleteTask = async (id) => {
+    await checkOnlineStatus();
+
     const updatedTasks = tasks.filter((t) => t.id !== id);
     setTasks(updatedTasks);
+    await saveTasks(updatedTasks);
 
-    try {
-      await invoke("save_local_tasks", { tasks: updatedTasks });
-    } catch (error) {
-      console.error("Error deleting task:", error);
+    if (isOnline) {
+      await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
     }
 
     setSelectedTask(null);
@@ -140,17 +233,22 @@ const Projects = () => {
   };
 
   const handleTaskComplete = async (taskId, isComplete) => {
+    await checkOnlineStatus();
+
     const completed_on = isComplete ? new Date().toISOString() : null;
     const updatedTasks = tasks.map((t) =>
-      t.id === taskId ? { ...t, completed: isComplete, completed_on } : t
+      t.id === taskId
+        ? {
+            ...t,
+            completed: isComplete,
+            completed_on,
+            updated_at: new Date().toISOString(),
+            pending_sync: !isOnline,
+          }
+        : t
     );
     setTasks(updatedTasks);
-
-    try {
-      await invoke("save_local_tasks", { tasks: updatedTasks });
-    } catch (error) {
-      console.error("Error marking task complete:", error);
-    }
+    await saveTasks(updatedTasks);
 
     if (selectedTask && selectedTask.id === taskId) {
       setSelectedTask((prev) => ({
@@ -159,15 +257,26 @@ const Projects = () => {
         completed_on,
       }));
     }
+
+    if (isOnline) {
+      await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
+    }
   };
 
   const handleContainerClick = () => {
-    if (dateInputRef.current && dateInputRef.current.showPicker) {
+    if (dateInputRef.current?.showPicker) {
       dateInputRef.current.showPicker();
     }
   };
 
   const closeModal = () => {
+    if (selectedTask) {
+      const initialTask = JSON.parse(initialTaskRef.current || "{}");
+
+      if (JSON.stringify(selectedTask) !== JSON.stringify(initialTask)) {
+        handleUpdateTask();
+      }
+    }
     setSelectedTask(null);
     setEditMode(false);
     setErrorMessage("");
@@ -179,10 +288,8 @@ const Projects = () => {
         Object.keys(groupedTasks).length === 0 && "-mt-16"
       }`}
     >
-      {/* Check if there are no projects */}
       {Object.keys(groupedTasks).length === 0 ? (
         <div className="flex flex-col items-center justify-center h-screen">
-          {/* Icon */}
           <div className="bg-cyan-600/10 text-cyan-400 p-4 rounded-full shadow-lg mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -199,15 +306,13 @@ const Projects = () => {
               />
             </svg>
           </div>
-          {/* Message */}
           <h1 className="text-3xl font-bold text-gray-200 mb-2">
             No Ongoing Projects
           </h1>
           <p className="text-gray-400 text-lg text-center max-w-md">
-            It seems like you don’t have any active projects. Assign a task to a
+            It seems like you don't have any active projects. Assign a task to a
             project and they will show up here!
           </p>
-          {/* Call-to-Action Button */}
           <Link
             to="/tasks"
             className="mt-6 px-6 py-3 bg-cyan-500/30 text-white font-medium rounded-full shadow-md hover:bg-cyan-700 transition duration-300"
@@ -232,13 +337,19 @@ const Projects = () => {
       <Suspense>
         {selectedTask && (
           <SelectedLocalTaskModal
+            tasks={tasks}
+            setTasks={setTasks}
+            saveTasks={saveTasks}
             selectedTask={selectedTask}
             setSelectedTask={setSelectedTask}
             handleTitleChange={(e) =>
-              setSelectedTask((prev) => ({ ...prev, title: e.target.value }))
+              setSelectedTask((prev) => ({
+                ...prev,
+                title: e.target.value,
+              }))
             }
             handleUpdateTask={handleUpdateTask}
-            closeNewTaskModal={closeModal}
+            closeSelectedTaskModal={closeModal}
             errorMessage={errorMessage}
             editMode={editMode}
             setEditMode={setEditMode}
@@ -249,83 +360,12 @@ const Projects = () => {
             handleTaskComplete={handleTaskComplete}
             processTaskDescription={(text) => text}
             projects={[...new Set(tasks.map((t) => t.project).filter(Boolean))]}
+            isOnline={isOnline}
           />
         )}
       </Suspense>
     </div>
   );
 };
-
-// ProjectCard subcomponent: inline-edit for project name + task list
-function ProjectCard({
-  projectName,
-  projectTasks,
-  renameProject,
-  handleTaskClick,
-}) {
-  const [editing, setEditing] = useState(false);
-  const [tempName, setTempName] = useState(projectName);
-
-  // handleBlurOrSubmit => called on blur or pressing Enter
-  const handleBlurOrSubmit = () => {
-    renameProject(projectName, tempName);
-    setEditing(false);
-  };
-
-  return (
-    <div
-      className="break-inside-avoid w-full
-                 bg-gradient-to-br from-white/5 to-black/10
-                 backdrop-blur-md border border-white/10 rounded-xl
-                 shadow-lg p-4 mb-5
-                 hover:border-cyan-500/30 hover:shadow-cyan-700/30
-                 transition-all duration-300"
-    >
-      {/* Inline-editable project title */}
-      {editing ? (
-        <input
-          className="bg-transparent border-b border-cyan-400
-                     focus:outline-none focus:border-cyan-500
-                      text-xl font-semibold mb-3 w-full
-                     transition-colors"
-          value={tempName}
-          autoFocus
-          onChange={(e) => setTempName(e.target.value)}
-          onBlur={handleBlurOrSubmit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleBlurOrSubmit();
-            }
-          }}
-        />
-      ) : (
-        <h2
-          className="text-xl font-semibold mb-3 bg-gradient-to-r from-cyan-200 via-white to-white bg-clip-text text-transparent cursor-pointer"
-          onDoubleClick={() => setEditing(true)}
-          title="Double-click to rename project"
-        >
-          {projectName}
-        </h2>
-      )}
-
-      {/* Tasks List */}
-      <ul className="space-y-2">
-        {projectTasks.map((task) => (
-          <li
-            key={task.id}
-            className="text-sm text-gray-100
-                       bg-white/5 px-3 py-2 rounded-md
-                       hover:bg-cyan-500/20 transition-colors
-                       cursor-pointer"
-            onClick={() => handleTaskClick(task)}
-          >
-            {task.title || "Untitled Task"}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 export default Projects;

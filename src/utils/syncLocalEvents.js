@@ -112,8 +112,6 @@ export async function syncLocalEventsWithFirestore(
 
     setLocalEvents(updatedEvents);
     await saveLocalEvents(updatedEvents);
-
-    console.log("Event sync complete with deletion handling!");
   } catch (error) {
     console.error("Error syncing events with Firestore:", error);
     throw error;

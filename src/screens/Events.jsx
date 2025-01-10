@@ -20,11 +20,11 @@ const Events = () => {
 
   return (
     <div className="flex flex-col">
-      <div className="flex gap-4 h-full">
+      <div className="flex gap-4 min-h-[512px] h-full">
         <div className="flex-1">
           <EventMap isLoaded={isLoaded} loadError={loadError} />
         </div>
-        <div>
+        <div className={`${isLoaded && "justify-end flex"}`}>
           <GoogleCalendarEvents />
         </div>
       </div>

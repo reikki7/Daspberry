@@ -99,12 +99,26 @@ const NewAsanaTaskModal = ({
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
       clearAllFields();
-      setNew
+      setNew;
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setNewTaskModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setNewTaskModalOpen]);
+
   return (
-    <div className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-sm bg-black/60 flex items-center justify-center z-50 px-4 py-8" onClick={handleOverlayClick}>
+    <div
+      className="fixed rounded-3xl overflow-hidden inset-0 backdrop-blur-sm bg-black/60 flex items-center justify-center z-50 px-4 py-8"
+      onClick={handleOverlayClick}
+    >
       <div className="bg-gray-950/80 rounded-2xl overflow-hidden max-w-4xl w-full max-h-full flex flex-col border border-white/10 shadow-2xl">
         <div
           data-tauri-drag-region
@@ -226,7 +240,7 @@ const NewAsanaTaskModal = ({
                   notes: e.target.value,
                 })
               }
-              className="w-full h-full bg-white/5 text-cyan-100 text-sm whitespace-pre-wrap border border-white/10 hover:border-white/20 focus:border-cyan-500/30 rounded-lg focus:outline-none p-4 font-light tracking-wide transition-all duration-300 placeholder-cyan-200/30"
+              className="w-full h-full bg-white/5 text-cyan-100 text-sm whitespace-pre-wrap border border-white/10 hover:border-white/20 focus:white rounded-lg focus:outline-none p-4 font-light tracking-wide transition-all duration-300 placeholder-cyan-200/30"
               placeholder="Enter task description"
               rows={5}
               onKeyDown={(e) => e.stopPropagation()}

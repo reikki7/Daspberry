@@ -1,4 +1,4 @@
-import { ChevronsLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 const SongFetchPopup = ({
   isSongFetchPopUp,
@@ -15,8 +15,8 @@ const SongFetchPopup = ({
   return (
     <div
       className={`
-        fixed
-        ${musicMenu ? "right-5 w-64" : "-right-[250px] hover:right-5 w-72"}
+        absolute
+        ${musicMenu ? "right-5 w-64" : "-right-[263px] hover:right-5 w-72"}
         top-20
         z-[250]
         duration-300
@@ -25,10 +25,10 @@ const SongFetchPopup = ({
     >
       <div className="relative w-full rounded-2xl bg-gray-950/50 backdrop-blur-xs backdrop-brightness-75 border border-white/5 shadow-lg overflow-hidden">
         {/* Chevron indicator */}
-        <ChevronsLeft
+        <ChevronLeft
           className={`
             ${musicMenu ? "opacity-0" : "opacity-100 group-hover:opacity-0"}
-            absolute left-2 top-1/2 -translate-y-1/2
+            absolute left-0 top-1/2 -translate-y-1/2
             duration-300
           `}
         />

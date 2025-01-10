@@ -149,11 +149,10 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       return;
     }
 
-    await checkOnlineStatus();
-
     setNewTaskModalOpen(false);
 
-    // If user typed a project that isn’t in the list, add it.
+    checkOnlineStatus();
+
     if (newTask.project && !projects.includes(newTask.project)) {
       setProjects((prev) => [...prev, newTask.project]);
     }
@@ -172,26 +171,45 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
 
     const updatedTasks = [...tasks, newTaskEntry];
     setTasks(updatedTasks);
-    await saveTasks(updatedTasks);
 
-    if (isOnline) {
-      await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
-    }
+    // Save tasks locally
+    void (async () => {
+      try {
+        await saveTasks(updatedTasks);
+      } catch (error) {
+        console.error("Error saving tasks locally:", error);
+      }
 
-    try {
-      await invoke("save_local_tasks", { tasks: updatedTasks });
-      eventBus.emit("events_updated");
-    } catch (error) {
-      console.error("Error saving tasks:", error);
-    }
+      // Sync with Firestore in background
+      if (isOnline) {
+        try {
+          await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
+        } catch (error) {
+          console.error("Error syncing tasks:", error);
+        }
+      }
 
-    // Reset the newTask form
+      // 5) Also call Tauri `invoke` in background
+      try {
+        await invoke("save_local_tasks", { tasks: updatedTasks });
+        eventBus.emit("events_updated");
+      } catch (error) {
+        console.error("Error invoking Tauri save:", error);
+      }
+    })();
+
+    // Finally, reset the newTask form
     setNewTask({
       title: "",
       date: "",
       description: "",
       project: "",
     });
+  };
+
+  const handleFilterChange = (project) => {
+    setCurrentProjectFilter(project);
+    setCurrentPage(1); // Reset to the first page
   };
 
   const processTaskDescription = (notes) => {
@@ -204,7 +222,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
           const language = codeBlockMatch[1]?.trim() || "text";
           const code = codeBlockMatch[2]?.trim();
           return (
-            <div style={{ position: "relative" }} key={index}>
+            <div style={{ position: "relative" }} key={index} tabIndex={-1}>
               <CopyToClipboard text={code}>
                 <>
                   {isModalOpen && (
@@ -227,6 +245,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
               </CopyToClipboard>
               <Suspense fallback={null}>
                 <SyntaxHighlighter
+                  tabIndex={-1}
                   language={language}
                   style={nightOwl}
                   wrapLongLines={true}
@@ -253,6 +272,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
               className="text-blue-500 underline"
               target="_blank"
               rel="noopener noreferrer"
+              tabIndex={-1}
             >
               {segment}
             </a>
@@ -265,9 +285,13 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
           if (nextSegment) {
             array[index + 1] = "";
             return (
-              <div key={index} className="flex items-start">
-                <span className="mr-2 text-white">•</span>
-                <span className="whitespace-pre-wrap">{nextSegment}</span>
+              <div key={index} className="flex items-start" tabIndex={-1}>
+                <span className="mr-2 text-white" tabIndex={-1}>
+                  •
+                </span>
+                <span className="whitespace-pre-wrap" tabIndex={-1}>
+                  {nextSegment}
+                </span>
               </div>
             );
           }
@@ -282,7 +306,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
         }
 
         return (
-          <span key={index} className="whitespace-pre-wrap">
+          <span key={index} className="whitespace-pre-wrap" tabIndex={-1}>
             {segment}
           </span>
         );
@@ -299,47 +323,51 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
     }
   };
 
-  const handleUpdateTask = async () => {
+  const handleUpdateTask = () => {
     if (!selectedTask.title.trim()) {
       showNotification("Task title cannot be empty.", "error");
       return;
     }
 
-    await checkOnlineStatus();
+    setSelectedTask(null);
+    setErrorMessage("");
+    setEditMode(false);
+    setCopied(false);
+    setIsModalOpen(false);
 
+    // Check or update project list (if user typed a new project)
     if (selectedTask.project && !projects.includes(selectedTask.project)) {
       setProjects((prev) => [...prev, selectedTask.project]);
     }
 
-    const updatedTasks = tasks.map((task) =>
-      task.id === selectedTask.id ? selectedTask : task
+    // Prepare the updated task with new timestamp
+    const updatedTask = {
+      ...selectedTask,
+      updated_at: new Date().toISOString(),
+      pending_sync: !isOnline,
+    };
+
+    // Update local tasks immediately (so the UI reflects it)
+    const newTasks = tasks.map((t) =>
+      t.id === updatedTask.id ? updatedTask : t
     );
-    setTasks(updatedTasks);
-    eventBus.emit("events_updated");
-    setSelectedTask(null);
-    setErrorMessage("");
+    setTasks(newTasks);
 
-    try {
-      // Update task with timestamp
-      const updatedTask = {
-        ...selectedTask,
-        updated_at: new Date().toISOString(),
-        pending_sync: !isOnline,
-      };
+    // Fire-and-forget the database sync in the background
+    void (async () => {
+      try {
+        // Save to local storage
+        await saveTasks(newTasks);
 
-      // Update local state
-      const updatedTasks = tasks.map((task) =>
-        task.id === updatedTask.id ? updatedTask : task
-      );
-
-      await saveTasks(updatedTasks);
-
-      if (isOnline) {
-        await syncLocalTasksWithFirestore(updatedTasks, setTasks, saveTasks);
+        // If online, sync with Firestore
+        if (isOnline) {
+          await syncLocalTasksWithFirestore(newTasks, setTasks, saveTasks);
+        }
+        eventBus.emit("events_updated");
+      } catch (error) {
+        console.error("Error saving updated task:", error);
       }
-    } catch (error) {
-      console.error("Error saving updated task:", error);
-    }
+    })();
   };
 
   const handleDeleteTask = async () => {
@@ -402,7 +430,6 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
   );
 
   const handleTaskComplete = async (taskId, isComplete) => {
-    console.log("Task Complete Status:", taskIsComplete);
     const completed_on = isComplete ? new Date().toISOString() : null;
     const updated_at = new Date().toISOString();
 
@@ -435,7 +462,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
       try {
         const docRef = doc(db, "Local Tasks", updatedTask.id);
         await setDoc(docRef, updatedTask, { merge: true }); // Update Firestore
-        console.log(`Task ${updatedTask.id} updated in Firestore.`);
+        // console.log(`Task ${updatedTask.id} updated in Firestore.`);
       } catch (error) {
         console.error("Error updating task in Firestore:", error);
       }
@@ -601,7 +628,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
         <div className="flex items-center gap-4">
           <ProjectFilter
             tasks={tasks}
-            onFilterChange={setCurrentProjectFilter}
+            onFilterChange={handleFilterChange}
             setCurrentPage={setCurrentPage}
           />
 
@@ -679,7 +706,7 @@ const LocalTasks = ({ setIsTaskAvailable }) => {
           handleContainerClick={handleContainerClick}
           notification={notification}
           setNotification={setNotification}
-          projects={projects}
+          projects={distinctIncompleteProjects}
           setProjects={setProjects}
         />
       )}

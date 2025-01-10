@@ -109,9 +109,11 @@ const CompletedLocalTaskModal = ({
             >
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <h3 className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-md text-xs">
-                    {task.project}
-                  </h3>
+                  {task.project && (
+                    <h3 className="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-md text-xs">
+                      {task.project}
+                    </h3>
+                  )}
                   <h4 className="font-light tracking-wide text-white truncate">
                     {task.title}
                   </h4>

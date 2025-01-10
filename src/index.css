@@ -272,3 +272,7 @@ input[type="time"]::-moz-calendar-picker-indicator {
     background-position: 100% 50%;
   }
 }
+
+.gm-svpc div img {
+  position: relative !important;
+}

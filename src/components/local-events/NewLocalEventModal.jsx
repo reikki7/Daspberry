@@ -211,7 +211,6 @@ const NewLocalEventModal = ({
     setNewEventModalOpen(false);
 
     if (isOnline) {
-      console.log("Syncing with Firestore...");
       await syncLocalEventsWithFirestore(updatedEvents, setEvents, saveEvents);
     }
   };
@@ -267,7 +266,7 @@ const NewLocalEventModal = ({
               onChange={(e) =>
                 setNewEvent((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="w-full bg-gray-800/30 text-white p-3 rounded-lg border border-gray-700/50 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 placeholder-cyan-200/30 transition-all outline-none"
+              className="w-full bg-gray-800/30 text-white p-3 rounded-lg border border-gray-700/50 focus:border-white/30-400 focus:ring-1 focus:ring-white placeholder-cyan-200/30 transition-all outline-none"
             />
           </div>
 
@@ -281,7 +280,7 @@ const NewLocalEventModal = ({
                   description: e.target.value,
                 }))
               }
-              className="w-full bg-gray-800/30 h-72 text-white p-3 rounded-lg border border-gray-700/50 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 placeholder-cyan-200/30 transition-all outline-none resize-none"
+              className="w-full bg-gray-800/30 h-72 text-white p-3 rounded-lg border border-gray-700/50 focus:border-white/30 focus:ring-1 focus:ring-white placeholder-cyan-200/30 transition-all outline-none resize-none"
             />
           </div>
 
@@ -294,7 +293,7 @@ const NewLocalEventModal = ({
               onKeyDown={handleKeyDown}
               autoComplete="off"
               placeholder="Event Location"
-              className="w-full bg-gray-800/30 text-white p-3 rounded-lg border border-gray-700/50 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 placeholder-cyan-200/30 transition-all outline-none"
+              className="w-full bg-gray-800/30 text-white p-3 rounded-lg border border-gray-700/50 focus:border-white/30 focus:ring-1 focus:ring-white placeholder-cyan-200/30 transition-all outline-none"
             />
             {status === "OK" && isOpen && (
               <ul className="absolute z-50 w-full bg-black/90 mt-1 rounded-lg border border-gray-700/50 shadow-lg max-h-60 overflow-auto">

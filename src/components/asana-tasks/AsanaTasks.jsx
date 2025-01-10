@@ -213,7 +213,11 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         if (markerMatch) {
           const userIndex = parseInt(markerMatch[1], 10);
           return (
-            <span key={index} className="bg-blue-500/30 px-1 rounded">
+            <span
+              tabIndex={-1}
+              key={index}
+              className="bg-blue-500/30 px-1 rounded"
+            >
               @{replacements[userIndex]}
             </span>
           );
@@ -229,6 +233,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
               className="text-blue-500 underline"
               target="_blank"
               rel="noopener noreferrer"
+              tabIndex={-1}
             >
               {segment}
             </a>
@@ -238,7 +243,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         // Handle bullet points for indented lines
         if (/^\s{2,}/.test(segment)) {
           return (
-            <div key={index} className="flex items-start">
+            <div key={index} className="flex items-start" tabIndex={-1}>
               <span className="mr-2 text-white">•</span>
               <span>{segment.trim()}</span>
             </div>
@@ -252,11 +257,15 @@ const AsanaTasks = ({ isTaskAvailable }) => {
             // If the next segment is a bullet point, skip adding <br>
             return null;
           }
-          return <br key={index} />;
+          return <br key={index} tabIndex={-1} />;
         }
 
         // Preserve plain text and spacing
-        return <span key={index}>{segment}</span>;
+        return (
+          <span key={index} tabIndex={-1}>
+            {segment}
+          </span>
+        );
       });
   };
 
@@ -478,7 +487,11 @@ const AsanaTasks = ({ isTaskAvailable }) => {
     );
 
   return (
-    <div className="mb-4 flex flex-col w-full h-[510px] overflow-y-auto">
+    <div
+      className={`mb-4 flex flex-col w-full ${
+        isTaskAvailable ? "h-[510px]" : "h-[797px]"
+      } overflow-y-auto`}
+    >
       <ToastContainer
         id="toast-container"
         position="top-center"
@@ -504,7 +517,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
         {/* Refresh and Add Task Buttons */}
         <div className="flex gap-2">
           <button
-            onClick={() => setFetchStrategy("network")}
+            onClick={() => fetchTasks("network")}
             className="flex group items-center gap-2 px-4 py-1.5 bg-blue-500/20 duration-300 text-white rounded-md shadow-sm hover:shadow-md hover:bg-blue-500/30 text-sm font-medium"
           >
             <RefreshCw
@@ -535,6 +548,7 @@ const AsanaTasks = ({ isTaskAvailable }) => {
             handleTaskClick={handleTaskClick}
             loading={loading}
             replaceProfileLinks={replaceProfileLinks}
+            isTaskAvailable={isTaskAvailable}
           />
         </div>
 

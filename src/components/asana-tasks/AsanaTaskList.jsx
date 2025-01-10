@@ -9,7 +9,7 @@ const AsanaTaskList = ({
   replaceProfileLinks,
 }) => {
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-3" tabIndex={-1}>
       {tasks?.length > 0 && !loading ? (
         tasks?.map((task) => (
           <button
@@ -20,17 +20,24 @@ const AsanaTaskList = ({
           >
             {/* Hover gradient overlay */}
             <div
+              tabIndex={-1}
               className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 opacity-0 
                     group-hover:opacity-100 transition-opacity duration-100 ease-in-out"
             />
 
             {/* Content container - needs relative positioning to stay above gradient */}
-            <div className="relative">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-medium text-white line-clamp-2 truncate">
+            <div className="relative" tabIndex={-1}>
+              <div
+                className="flex justify-between items-center mb-2"
+                tabIndex={-1}
+              >
+                <h3
+                  className="text-lg font-medium text-white line-clamp-2 truncate"
+                  tabIndex={-1}
+                >
                   {task?.name}
                 </h3>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3" tabIndex={-1}>
                   {task?.followers?.map((follower) => (
                     <div
                       key={follower?.gid}

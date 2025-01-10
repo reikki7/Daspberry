@@ -1,5 +1,7 @@
+import React, { useState, useEffect } from "react";
 import { CalendarIcon, Check, Eye, Pencil, Trash2 } from "lucide-react";
 import AsanaLogoIcon from "../../assets/asana-logo-icon.png";
+import { ClipLoader } from "react-spinners";
 
 const SelectedAsanaTaskModal = ({
   selectedTask,
@@ -21,11 +23,38 @@ const SelectedAsanaTaskModal = ({
   dateInputRef,
   handleContainerClick,
 }) => {
+  const [loadingComplete, setLoadingComplete] = useState(false);
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
       closeModal();
     }
   };
+
+  const handleTaskCompleteClick = async (isComplete) => {
+    setLoadingComplete(true); // Show spinner
+    try {
+      await handleTaskComplete(isComplete); // Execute the completion logic
+    } catch (err) {
+      console.error("Failed to complete task:", err);
+      toast.error("Failed to update task completion.", {
+        position: "top-center",
+        toastId: "task-complete-error",
+      });
+    } finally {
+      setLoadingComplete(false); // Hide spinner
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        closeModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleTaskComplete, closeModal]);
 
   return (
     <div
@@ -193,19 +222,29 @@ const SelectedAsanaTaskModal = ({
                 <Trash2 size={15} />
               </button>
               <button
-                onClick={() => {
-                  handleTaskComplete(!taskIsComplete);
-                }}
+                onClick={() => handleTaskCompleteClick(!taskIsComplete)}
                 className={`flex items-center gap-2 py-2 px-4 rounded-xl backdrop-blur-xl transition-all duration-300 ${
                   taskIsComplete
                     ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30"
                     : "bg-white/5 border border-white/20 text-white hover:border-green-500/30 hover:text-green-400"
                 }`}
+                disabled={loadingComplete} // Disable while loading
               >
-                <Check size={17} />
-                <span className="text-sm font-light tracking-wider">
-                  {taskIsComplete ? "Completed" : "Mark Complete"}
-                </span>
+                {loadingComplete ? (
+                  <>
+                    <ClipLoader size={17} color="white" />
+                    <span className="text-sm font-light tracking-wider">
+                      {taskIsComplete ? "Completed" : "Mark Complete"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={17} />
+                    <span className="text-sm font-light tracking-wider">
+                      {taskIsComplete ? "Completed" : "Mark Complete"}
+                    </span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -228,7 +267,7 @@ const SelectedAsanaTaskModal = ({
                     notes: e.target.value,
                   })
                 }
-                className="w-full bg-white/5 h-[594px] text-white whitespace-pre-wrap border border-white/10 hover:border-white/20 focus:border-cyan-500/30 rounded-lg focus:outline-none p-4 font-light tracking-wide transition-all duration-300 placeholder-cyan-200/30"
+                className="w-full bg-white/5 h-[594px] text-white whitespace-pre-wrap border border-white/10 hover:border-white/20 focus:border-white/30 rounded-lg focus:outline-none p-4 font-light tracking-wide transition-all duration-300 placeholder-cyan-200/30"
                 placeholder="Enter task description"
                 rows={5}
                 onKeyDown={(e) => e.stopPropagation()}
