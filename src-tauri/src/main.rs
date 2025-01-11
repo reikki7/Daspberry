@@ -13,6 +13,15 @@ use tauri::Manager;
 use std::env;
 use fs2::FileExt;
 
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
+use symphonia::core::io::ReadOnlySource;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use id3::Tag;
+use id3::TagLike;
+
 const REDIRECT_URI: &str = "oob";
 
 #[derive(serde::Serialize)]
@@ -99,6 +108,185 @@ struct Event {
 #[derive(Serialize, Deserialize)]
 struct CreateTaskResponse {
     data: Value,
+}
+
+#[derive(Serialize)]
+struct AudioMetadata {
+    title: Option<String>,
+    artist: Option<Vec<String>>, // Updated to an array
+    album: Option<String>,
+    year: Option<String>,
+    genre: Option<String>,
+    duration: Option<f64>,
+    album_art: Option<String>, // Base64 encoded image
+}
+
+#[tauri::command]
+fn get_music_files_with_metadata() -> Result<Vec<MusicFileWithMetadata>, String> {
+    let music_dir = dirs::audio_dir()
+        .ok_or_else(|| "Could not find music directory".to_string())?;
+    
+    let mut music_files = Vec::new();
+    visit_dirs_with_metadata(&music_dir, &mut music_files)
+        .map_err(|e| e.to_string())?;
+    
+    Ok(music_files)
+}
+
+#[derive(Serialize)]
+struct MusicFileWithMetadata {
+    name: String,
+    path: String,
+    metadata: AudioMetadata,
+}
+
+fn extract_metadata(path: &str) -> Result<AudioMetadata, String> {
+    // Open the file
+    let file = File::open(path).map_err(|e| e.to_string())?;
+    
+    // Create the media source
+    let source = ReadOnlySource::new(file);
+    let mss = MediaSourceStream::new(Box::new(source), Default::default());
+
+    // Create probe hint and options
+    let mut hint = Hint::new();
+    if let Some(extension) = path.split('.').last() {
+        hint.with_extension(extension);
+    }
+
+    let format_opts = FormatOptions::default();
+    let metadata_opts = MetadataOptions::default();
+
+    // Probe the media source
+    let probed = symphonia::default::get_probe()
+        .format(&hint, mss, &format_opts, &metadata_opts)
+        .map_err(|e| format!("Failed to probe format: {}", e))?;
+    
+    let mut format = probed.format;
+    let metadata = format.metadata().current().cloned();
+    
+    // Initialize default metadata structure
+    let mut audio_metadata = AudioMetadata {
+        title: None,
+        artist: None,
+        album: None,
+        year: None,
+        genre: None,
+        duration: None,
+        album_art: None,
+    };
+
+    // Extract standard tags
+    if let Some(tags) = metadata {
+        for tag in tags.tags() {
+            match tag.std_key {
+                Some(symphonia::core::meta::StandardTagKey::TrackTitle) => {
+                    audio_metadata.title = Some(tag.value.to_string());
+                }
+                Some(symphonia::core::meta::StandardTagKey::Artist) => {
+                    let artist_string = tag.value.to_string();
+                    // Split the artist string on '\u0000' if present
+                    let artists: Vec<String> = artist_string
+                        .split('\u{0}')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    audio_metadata.artist = Some(artists);
+                }
+                Some(symphonia::core::meta::StandardTagKey::Album) => {
+                    audio_metadata.album = Some(tag.value.to_string());
+                }
+                Some(symphonia::core::meta::StandardTagKey::Date) => {
+                    audio_metadata.year = Some(tag.value.to_string());
+                }
+                Some(symphonia::core::meta::StandardTagKey::Genre) => {
+                    audio_metadata.genre = Some(tag.value.to_string());
+                }
+                _ => {}
+            }
+        }
+
+        // Extract duration from track
+        if let Some(track) = format.tracks().first() {
+            if let Some(timebase) = track.codec_params.time_base {
+                if let Some(n_frames) = track.codec_params.n_frames {
+                    let duration = (n_frames as f64) * (timebase.numer as f64 / timebase.denom as f64);
+                    audio_metadata.duration = Some(duration);
+                }
+            }
+        }
+
+        // Extract album art
+        for visual in tags.visuals() {
+            audio_metadata.album_art = Some(BASE64.encode(&visual.data));
+            break; // Just take the first image
+        }
+    }
+
+    // Try ID3 tags as a fallback if no metadata was found
+    if audio_metadata.title.is_none() {
+        if let Ok(tag) = Tag::read_from_path(path) {
+            audio_metadata.title = tag.title().map(|s| s.to_string());
+            if let Some(artist) = tag.artist() {
+                let artists: Vec<String> = artist
+                    .split('\u{0}')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                audio_metadata.artist = Some(artists);
+            }
+            audio_metadata.album = tag.album().map(|s| s.to_string());
+            audio_metadata.year = tag.year().map(|y| y.to_string());
+            audio_metadata.genre = tag.genre().map(|s| s.to_string());
+            
+            // Get album art from ID3 if available
+            if audio_metadata.album_art.is_none() {
+                if let Some(picture) = tag.pictures().next() {
+                    audio_metadata.album_art = Some(BASE64.encode(&picture.data));
+                }
+            }
+        }
+    }
+
+    Ok(audio_metadata)
+}
+
+fn visit_dirs_with_metadata(dir: &PathBuf, music_files: &mut Vec<MusicFileWithMetadata>) -> std::io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                visit_dirs_with_metadata(&path, music_files)?;
+            } else {
+                if let Some(extension) = path.extension() {
+                    if extension == "mp3" || extension == "wav" || extension == "flac" || extension == "m4a" || extension == "ogg" {
+                        if let (Some(file_name), Some(path_str)) = (path.file_name(), path.to_str().map(|s| s.to_owned())) {
+                            // Extract metadata for the file
+                            let metadata = extract_metadata(&path_str)
+                                .unwrap_or_else(|_| AudioMetadata {
+                                    title: None,
+                                    artist: None,
+                                    album: None,
+                                    year: None,
+                                    genre: None,
+                                    duration: None,
+                                    album_art: None,
+                                });
+
+                            music_files.push(MusicFileWithMetadata {
+                                name: file_name.to_string_lossy().into_owned(),
+                                path: path_str,
+                                metadata,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn get_google_client_id() -> String {
@@ -700,7 +888,8 @@ fn run_app() {
             save_local_events,
             load_local_events,
             clear_local_events,
-            refresh_google_tokens
+            refresh_google_tokens,
+            get_music_files_with_metadata
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

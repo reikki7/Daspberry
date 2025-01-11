@@ -1,3 +1,4 @@
+// MusicMenuModal.jsx
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 import artDefault from "../../assets/art-default.jpg";
@@ -6,7 +7,7 @@ import { ArrowUpZA, ArrowDownAZ, RefreshCw } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import MusicMenuPlayerControls from "./MusicMenuPlayerControls";
 
-const MusicMenuModal = ({
+export default function MusicMenuModal({
   musicFiles = [],
   currentTrack,
   togglePlay,
@@ -14,8 +15,7 @@ const MusicMenuModal = ({
   musicMenu,
   tags,
   albumArt,
-  albumArtList,
-  metadata,
+  metadata = {},
   setIsPlaying,
   isPlaying,
   toggleNextTrack,
@@ -25,58 +25,58 @@ const MusicMenuModal = ({
   toggleRepeatSingle,
   isShuffle,
   isLoopingSingle,
-  fetchSongMetadata,
-  isLoadingMetadata,
   loadMusicFiles,
-  setIsSongFetchPopUp,
-  setCurrentFileName,
-  newSongsList,
-  setRemovedFiles,
-  setNewSongsList,
-}) => {
+  isLoadingMetadata,
+}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isUsingArrowKeys, setIsUsingArrowKeys] = useState(false);
   const [sortOrder, setSortOrder] = useState("asc");
   const [activeLetters, setActiveLetters] = useState(new Set());
-  const scrollContainerRef = useRef(null);
 
+  const scrollContainerRef = useRef(null);
   const itemRefs = useRef([]);
   const searchInputRef = useRef(null);
   const keyHeldDown = useRef(false);
 
   itemRefs.current = [];
 
-  const currentFile = useMemo(
-    () =>
-      musicFiles.find(
-        (musicFile) => convertFileSrc(musicFile.path) === currentTrack
-      ),
-    [musicFiles, currentTrack]
-  );
+  // For "Now Playing" at top
+  const currentFile = useMemo(() => {
+    return musicFiles.find(
+      (musicFile) => convertFileSrc(musicFile.path) === currentTrack
+    );
+  }, [musicFiles, currentTrack]);
 
+  // Filter + Sort
   const filteredMusic = useMemo(() => {
     return musicFiles
       .filter((file) => {
+        // If we have metadata for this file
         const meta = metadata[file.path];
         if (!meta) return false;
-        const searchLower = searchTerm.toLowerCase();
-        const titleMatch = (meta.title || file.name.replace(/\.mp3$/i, ""))
+
+        // Ensure searchTerm and metadata fields are strings
+        const searchLower = (searchTerm || "").toLowerCase().trim();
+        const title = (meta.title || file.name || "")
+          .toString()
           .toLowerCase()
-          .includes(searchLower);
-        const artistMatch = meta.artists
-          ? meta.artists.some((artist) =>
-              artist.toLowerCase().includes(searchLower)
-            )
-          : meta.artist
-          ? meta.artist.toLowerCase().includes(searchLower)
-          : false;
+          .trim();
+        const artist = (meta.artist || "Unknown Artist")
+          .toString()
+          .toLowerCase()
+          .trim();
+
+        // Match the search term against title and artist
+        const titleMatch = title.includes(searchLower);
+        const artistMatch = artist.includes(searchLower);
+
         return titleMatch || artistMatch;
       })
       .sort((a, b) => {
         const normalize = (str) =>
-          str.replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase();
+          (str || "").replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase();
         const metaA = normalize(metadata[a.path]?.title || a.name);
         const metaB = normalize(metadata[b.path]?.title || b.name);
         return sortOrder === "asc"
@@ -85,7 +85,7 @@ const MusicMenuModal = ({
       });
   }, [musicFiles, metadata, searchTerm, sortOrder]);
 
-  // Update the letterPositions function to add null checks
+  // 2) Letter positions for the alphabetical scroller
   const letterPositions = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container || !filteredMusic.length) return new Map();
@@ -97,7 +97,7 @@ const MusicMenuModal = ({
       const element = itemRefs.current[index];
       if (!element) return;
 
-      const title = metadata[file.path]?.title || file.name;
+      const title = (metadata[file.path]?.title || file.name || "").toString();
       const firstLetter = title.charAt(0).toUpperCase();
 
       if (firstLetter !== currentLetter) {
@@ -107,7 +107,7 @@ const MusicMenuModal = ({
           const containerRect = container.getBoundingClientRect();
           const relativeTop =
             rect.top - containerRect.top + container.scrollTop;
-          positions.set(currentLetter, relativeTop);
+          positions.set(firstLetter || "#", relativeTop);
         } catch (error) {
           // If there's any error getting positions, skip this letter
           console.debug("Skipping letter position calculation:", error);
@@ -118,7 +118,6 @@ const MusicMenuModal = ({
     return positions;
   }, [filteredMusic, metadata]);
 
-  // Update the handleScroll function to be more defensive
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -178,14 +177,22 @@ const MusicMenuModal = ({
       handleScroll();
       return () => container.removeEventListener("scroll", handleScroll);
     }
-  }, [filteredMusic]);
+  }, [filteredMusic, handleScroll]);
 
   // Generate available letters from filteredMusic
   const letters = useMemo(() => {
     const allLetters = Array.from(
       new Set(
         filteredMusic.map((file) => {
-          const title = metadata[file.path]?.title || file.name;
+          const title = (
+            metadata[file.path]?.title ||
+            file.name ||
+            ""
+          ).toString();
+          if (typeof title !== "string") {
+            console.warn(`Title for file path "${file.path}" is not a string.`);
+            return "#";
+          }
           const firstChar = title.charAt(0).toUpperCase();
 
           if (/[A-Z]/.test(firstChar)) {
@@ -208,7 +215,7 @@ const MusicMenuModal = ({
 
   const scrollToLetter = (letter) => {
     const index = filteredMusic.findIndex((file) => {
-      const metaTitle = (metadata[file.path]?.title || file.name).trim();
+      const metaTitle = (metadata[file.path]?.title || file.name || "").trim();
       const firstChar = metaTitle.charAt(0).toUpperCase();
       if (letter === "#") {
         return /[^A-Z0-9]/.test(firstChar); // Matches non-alphanumeric characters
@@ -223,19 +230,19 @@ const MusicMenuModal = ({
     }
   };
 
-  const toggleSortOrder = () => {
-    setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
-    // Maintain focused index position after sort unless it's invalid
-    setFocusedIndex((current) => Math.min(current, filteredMusic.length - 1));
-  };
+  // Sorting toggle
+  function toggleSortOrder() {
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    setFocusedIndex((c) => Math.min(c, filteredMusic.length - 1));
+  }
 
-  const handleOverlayClick = (e) => {
+  // Closing / overlay click
+  function handleOverlayClick(e) {
     if (e.target === e.currentTarget) {
-      setIsSongFetchPopUp(false);
       setMusicMenu(false);
       setIsUsingArrowKeys(false);
     }
-  };
+  }
 
   useEffect(() => {
     if (focusedIndex < 0) {
@@ -250,6 +257,7 @@ const MusicMenuModal = ({
       }
 
       if (e.key === "/") {
+        e.preventDefault();
         if (!isSearchFocused) e.preventDefault();
         document.activeElement.blur();
         setIsSearchFocused(true);
@@ -328,10 +336,14 @@ const MusicMenuModal = ({
       } else if (e.key === "Enter" && musicMenu) {
         e.preventDefault();
         const selectedFile = filteredMusic[focusedIndex];
-        const originalIndex = musicFiles.findIndex(
-          (musicFile) => musicFile.path === selectedFile.path
-        );
-        togglePlay(originalIndex);
+        if (selectedFile) {
+          const originalIndex = musicFiles.findIndex(
+            (musicFile) => musicFile.path === selectedFile.path
+          );
+          if (originalIndex !== -1) {
+            togglePlay(originalIndex);
+          }
+        }
       } else if (e.key === " ") {
         e.preventDefault();
         togglePlayPause();
@@ -351,14 +363,23 @@ const MusicMenuModal = ({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [filteredMusic, isPlaying, isSearchFocused, focusedIndex]);
+  }, [
+    filteredMusic,
+    isPlaying,
+    isSearchFocused,
+    focusedIndex,
+    musicMenu,
+    currentTrack,
+    togglePlayPause,
+    togglePlay,
+  ]);
 
   useEffect(() => {
     // Only adjust focusedIndex if it's out of bounds of the new filtered list
     if (focusedIndex >= filteredMusic.length) {
       setFocusedIndex(Math.max(0, filteredMusic.length - 1));
     }
-  }, [filteredMusic.length]);
+  }, [filteredMusic.length, focusedIndex]);
 
   useEffect(() => {
     if (itemRefs.current[focusedIndex]) {
@@ -397,7 +418,6 @@ const MusicMenuModal = ({
             </div>
             <button
               onClick={() => {
-                setIsSongFetchPopUp(false);
                 setMusicMenu(false);
               }}
               className="w-8 h-8 flex items-center hover:rotate-90 justify-center rounded-full text-white/60 hover:text-white duration-200"
@@ -406,18 +426,18 @@ const MusicMenuModal = ({
             </button>
           </div>
 
+          {/* Now Playing info */}
           {currentTrack && (
             <div
-              className={`relative flex items-center gap-4 p-4 pl-6  overflow-hidden ${
-                albumArt !== "/src/assets/art-default.jpg"
+              className={`relative flex items-center gap-4 p-4 pl-6 overflow-hidden ${
+                albumArt && albumArt !== artDefault
                   ? "bg-black/5"
                   : "bg-white/5"
               }`}
             >
-              {albumArt !== "/src/assets/art-default.jpg" && (
+              {albumArt && albumArt !== artDefault && (
                 <div
                   className="absolute inset-0 bg-cover bg-no-repeat"
-                  onError={(e) => (e.target.className = "bg-white/5")}
                   style={{
                     backgroundImage: `url(${albumArt})`,
                     backgroundPositionY: "40%",
@@ -434,33 +454,33 @@ const MusicMenuModal = ({
                 className="w-28 h-28 object-cover"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-white/40 italic">
+                <p className="text-[10px] animate-pulse text-white/40 italic">
                   Now playing...
                 </p>
                 <h3 className="text-white font-medium truncate">
                   {tags?.title ||
-                    currentFile?.name.replace(/\.mp3$/i, "") ||
-                    "Unknown Title"}
+                    (currentFile?.name
+                      ? currentFile.name.replace(/\.mp3$/i, "")
+                      : "Unknown Title")}
                 </h3>
-                {tags?.artists ? (
-                  <>
-                    {tags.artists.slice(0, 3).map((artist, index) => (
-                      <p key={index} className="text-white/60 text-xs truncate">
-                        {artist}
-                      </p>
-                    ))}
-                    {tags.artists.length > 3 && (
-                      <p className="text-white/60 text-xs truncate">...</p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-white/60 text-xs truncate">
-                    {tags?.artist || "Unknown Artist"}
-                  </p>
-                )}
+                <div className="text-white/60 text-xs">
+                  {Array.isArray(tags?.artist) && tags.artist.length > 0
+                    ? tags.artist
+                        .slice(0, 4) // Show up to 4 artists
+                        .map((artist, index) =>
+                          index === 3 && tags.artist.length > 4 ? (
+                            <span key={index}>...</span> // Show "..." if there are more than 4 artists
+                          ) : (
+                            <span key={index} className="block">
+                              {artist}
+                            </span>
+                          )
+                        )
+                    : tags?.artist || "Unknown Artist"}
+                </div>
               </div>
 
-              {/* Music Player Controls */}
+              {/* In-modal controls */}
               <MusicMenuPlayerControls
                 isPlaying={isPlaying}
                 isShuffle={isShuffle}
@@ -474,19 +494,29 @@ const MusicMenuModal = ({
             </div>
           )}
 
-          {/* Search Bar */}
+          {/* Search / Sort / Refresh */}
           <div className="p-3">
             <div className="flex items-center justify-between">
               <div className="relative w-full">
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search by title, artist, or album..."
+                  placeholder="Search by title or artist..."
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
+
+                    // Scroll to the top of the container
+                    const container = scrollContainerRef.current;
+                    if (container) {
+                      container.scrollTo({
+                        top: 0,
+                        behavior: "auto",
+                      });
+                    }
                   }}
                   onFocus={() => {
+                    e.preventDefault();
                     setIsSearchFocused(true);
                     setIsUsingArrowKeys(false);
                     setFocusedIndex(0);
@@ -494,7 +524,6 @@ const MusicMenuModal = ({
                   onBlur={() => setIsSearchFocused(false)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder:text-white/40 focus:outline-none"
                 />
-
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
@@ -504,6 +533,7 @@ const MusicMenuModal = ({
                   </button>
                 )}
               </div>
+              {/* Sort order */}
               <button
                 onClick={toggleSortOrder}
                 className="text-white/60 px-3 hover:text-white duration-200"
@@ -511,134 +541,126 @@ const MusicMenuModal = ({
               >
                 {sortOrder === "asc" ? <ArrowDownAZ /> : <ArrowUpZA />}
               </button>
+              {/* Manual refresh from Tauri */}
               <button
                 onClick={async () => {
-                  setCurrentFileName(null);
-                  setRemovedFiles([]);
-                  setNewSongsList([]);
                   await loadMusicFiles(true);
-                  await fetchSongMetadata(musicFiles, true);
-                  alert(
-                    `Music Library updated successfully!\n${
-                      newSongsList > 0 ? `\nNew Songs: ${newSongsList}` : ""
-                    }\nSongs scanned: ${musicFiles.length}`
-                  );
+                  alert("Music library has been updated!");
                 }}
-                disabled={isLoadingMetadata}
                 className="text-white/60 group px-2 hover:text-white duration-200"
                 title="Refresh Library"
+                disabled={isLoadingMetadata}
               >
                 <RefreshCw
                   size={18}
-                  className={` duration-300 ${
+                  className={`${
                     isLoadingMetadata
                       ? "animate-spin"
                       : "group-hover:rotate-180"
-                  }`}
+                  } duration-300 `}
                 />
               </button>
             </div>
           </div>
         </div>
 
+        {/* Main content: music list + alphabetical scroller */}
         <div
           className="flex music-list justify-between items-center"
           tabIndex={-1}
         >
-          {/* Music List */}
           <div
             ref={scrollContainerRef}
-            className={`p-2 overflow-y-auto custom-scrollbar focus:outline-none 
-    ${currentTrack ? "h-[573px]" : "h-[717px]"} `}
+            className={`p-2 overflow-y-auto custom-scrollbar focus:outline-none ${
+              currentTrack ? "h-[573px]" : "h-[717px]"
+            }`}
             role="listbox"
             tabIndex={-1}
             aria-activedescendant={`song-${focusedIndex}`}
           >
             <div className="grid grid-cols-2 gap-1">
               {filteredMusic.map((file, index) => {
-                const originalIndex = musicFiles.findIndex(
-                  (musicFile) => musicFile.path === file.path
-                );
+                const meta = metadata[file.path] || {};
+                const isActive = convertFileSrc(file.path) === currentTrack;
                 const isFocused = isUsingArrowKeys && index === focusedIndex;
+
+                // We'll store the ref for scrolling
                 itemRefs.current[index] = itemRefs.current[index] || null;
+
+                const handleClick = () => {
+                  // "togglePlay" uses the original index in musicFiles
+                  const originalIndex = musicFiles.findIndex(
+                    (mf) => mf.path === file.path
+                  );
+                  togglePlay(originalIndex);
+                  setFocusedIndex(index);
+                  setIsUsingArrowKeys(false);
+                };
+
+                // Build album art data url or default
+                const albumArtUrl = file.albumArt || artDefault;
 
                 return (
                   <button
-                    ref={(e) => (itemRefs.current[index] = e)}
+                    key={file.path}
                     id={`song-${index}`}
-                    key={index}
-                    onClick={() => {
-                      togglePlay(originalIndex);
-                      setFocusedIndex(index);
-                      setIsUsingArrowKeys(false); // Clear highlight on click
-                    }}
+                    ref={(el) => (itemRefs.current[index] = el)}
+                    onClick={handleClick}
                     tabIndex={-1}
-                    className={`w-full p-1 flex items-center text-left rounded-xl duration-200 group
-                  ${
-                    currentTrack === convertFileSrc(file.path)
-                      ? `bg-white/20 ${
-                          isFocused ? "text-white/60" : "text-white"
-                        }`
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
-                  }
-                  ${isFocused ? "bg-white/10 text-white" : ""}`}
+                    className={`w-full p-1 flex items-center text-left rounded-xl duration-200 group ${
+                      isActive
+                        ? `bg-white/20 ${
+                            isFocused ? "text-white/60" : "text-white"
+                          }`
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                    } ${isFocused ? "bg-white/10 text-white" : ""}`}
                     role="option"
                     aria-selected={isFocused}
                   >
-                    {/* Play indicator */}
+                    {/* The tiny dot indicator */}
                     <div className="w-8 h-8 flex items-center justify-center">
-                      {currentTrack === convertFileSrc(file.path) ? (
+                      {isActive ? (
                         <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                       ) : (
                         <div className="w-2 h-2 rounded-full bg-white/20 group-hover:bg-white/40 duration-200" />
                       )}
                     </div>
-
-                    {/* Album Art */}
+                    {/* Album Art + Title + Artist */}
                     <div className="flex items-center p-2">
                       <img
-                        src={albumArtList[file.path] || artDefault}
+                        src={albumArtUrl}
                         onError={(e) => (e.target.src = artDefault)}
                         alt="Album Art"
                         className="w-20 h-20 object-cover"
                       />
-                      {/* Track Info */}
+
                       <div className="ml-4 w-[230px]">
                         <span className="block text-sm font-semibold truncate">
-                          {metadata[file.path]?.title ||
-                            file?.name.replace(/\.mp3$/i, "") ||
-                            "Unknown Title"}
+                          {meta.title ||
+                            (file.name
+                              ? file.name.replace(/\.mp3$/i, "")
+                              : "Unknown Title")}
                         </span>
-                        <span className="block text-xs text-white/40">
-                          {metadata[file.path]?.artists ? (
-                            <>
-                              {metadata[file.path]?.artists
-                                .slice(0, 2)
-                                .map((artist, index) => (
-                                  <p
-                                    key={index}
-                                    className="text-white/60 text-xs truncate"
-                                  >
+                        <div className="flex flex-col text-xs text-white/40">
+                          {Array.isArray(meta.artist) &&
+                          meta.artist.length > 0 ? (
+                            meta.artist
+                              .slice(0, 3) // Show up to 3 artists
+                              .map((artist, i) =>
+                                i === 2 && meta.artist.length > 3 ? (
+                                  <span key={i}>...</span> // Show "..." if there are more than 3 artists
+                                ) : (
+                                  <span key={i} className="block">
                                     {artist}
-                                  </p>
-                                ))}
-                              {metadata[file.path]?.artists.length === 3 && (
-                                <p className="text-white/60 text-xs truncate">
-                                  {metadata[originalIndex]?.artists[2]}
-                                </p>
-                              )}
-                              {metadata[file.path]?.artists.length > 3 && (
-                                <p className="text-white/60 text-xs truncate">
-                                  ...
-                                </p>
-                              )}
-                            </>
+                                  </span>
+                                )
+                              )
                           ) : (
-                            <p className="text-white/60 text-xs truncate">
-                              {metadata[file.path]?.artist || "Unknown Artist"}
-                            </p>
+                            <span className="block">
+                              {meta.artist || "Unknown Artist"}
+                            </span>
                           )}
-                        </span>
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -647,17 +669,17 @@ const MusicMenuModal = ({
             </div>
           </div>
 
-          {/* Alphabetical Scroll */}
+          {/* A-Z scroller on the right */}
           <div className="flex text-[12.5px] gap-0.5 flex-col ml-1 mr-2">
             {letters.map((letter) => (
               <button
                 key={letter}
                 onClick={() => scrollToLetter(letter)}
-                className={`
-              transition-opacity duration-150
-              ${activeLetters.has(letter) ? "text-white" : "text-white/40"}
-              hover:text-white
-            `}
+                className={`duration-150 ${
+                  activeLetters.has(letter)
+                    ? "text-white"
+                    : "text-white/40 hover:text-white"
+                } `}
               >
                 {letter}
               </button>
@@ -667,6 +689,4 @@ const MusicMenuModal = ({
       </div>
     </div>
   );
-};
-
-export default MusicMenuModal;
+}
