@@ -184,6 +184,7 @@ export default function AutocompleteInput({
         <div className="absolute right-1.5 top-1 z-[999] text-white items-center flex gap-1">
           {searchValue && (
             <button
+              className="mr-2"
               onClick={() => {
                 onChange("");
                 setSearchValue("");
@@ -195,11 +196,11 @@ export default function AutocompleteInput({
             </button>
           )}
           <button
-            className="text-white p-2"
+            className="text-white p-2 border-l border-white/20"
             onClick={toggleDropdownAllProjects}
           >
             <ChevronDown
-              className={`${
+              className={`ml-1 ${
                 showDropdown ? "rotate-180" : "rotate-0"
               } duration-300`}
               size={15}
